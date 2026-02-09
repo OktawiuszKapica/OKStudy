@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "OKStudy",
+  "version": "1.0.0",
+  "description": "Make studying OK again - Alt+O szybka analiza, Alt+I z internetem, Alt+P powtórz",
+  "permissions": ["storage", "activeTab", "tabs"],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "options_page": "options.html",
+  "commands": {
+    "solve_fast": {
+      "suggested_key": {
+        "default": "Alt+O",
+        "mac": "Alt+O"
+      },
+      "description": "Szybka analiza (bez internetu)"
+    },
+    "solve_internet": {
+      "suggested_key": {
+        "default": "Alt+I",
+        "mac": "Alt+I"
+      },
+      "description": "Dokładna analiza (z internetem)"
+    },
+    "repeat_last": {
+      "suggested_key": {
+        "default": "Alt+P",
+        "mac": "Alt+P"
+      },
+      "description": "Powtórz ostatnią odpowiedź"
+    }
+  },
+  "background": {
+    "service_worker": "js/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["js/content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
