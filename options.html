@@ -139,6 +139,28 @@
     .model-option.active .model-desc {
       color: #22c55e;
     }
+    .pos-grid {
+      display: flex;
+      gap: 8px;
+    }
+    .pos-btn {
+      flex: 1;
+      padding: 12px 0;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #94a3b8;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pos-btn:hover { border-color: rgba(255, 255, 255, 0.25); }
+    .pos-btn.active {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.12);
+      color: #22c55e;
+    }
+    #posCard.dimmed { opacity: 0.45; }
     button {
       width: 100%;
       padding: 14px;
@@ -412,6 +434,18 @@
           <span class="model-desc">Sama odpowiedź, dyskretnie</span>
         </button>
       </div>
+    </div>
+
+    <div class="card" id="posCard">
+      <label>Pozycja odpowiedzi (tryb Express)</label>
+      <div class="pos-grid">
+        <button class="pos-btn" data-pos="tl" title="Lewy górny">↖</button>
+        <button class="pos-btn" data-pos="tr" title="Prawy górny">↗</button>
+        <button class="pos-btn" data-pos="bc" title="Środek dołu">▼</button>
+        <button class="pos-btn" data-pos="bl" title="Lewy dolny">↙</button>
+        <button class="pos-btn active" data-pos="br" title="Prawy dolny">↘</button>
+      </div>
+      <p class="hint">Gdzie ma pojawiać się dyskretna odpowiedź na stronie.</p>
     </div>
 
     <button id="saveBtn">💾 Zapisz</button>

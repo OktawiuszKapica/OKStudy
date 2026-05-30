@@ -2,6 +2,7 @@
 
 let selectedModel = 'gemini-3.5-flash';
 let selectedMode = 'tutor';
+let selectedPos = 'br';
 
 // Map retired model ids to current ones
 const MODEL_MIGRATION = {
@@ -26,7 +27,20 @@ chrome.storage.sync.get('stealthSettings', (result) => {
       btn.classList.toggle('active', btn.dataset.mode === selectedMode);
     });
   }
+  if (result.stealthSettings?.pos) {
+    selectedPos = result.stealthSettings.pos;
+    document.querySelectorAll('[data-pos]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.pos === selectedPos);
+    });
+  }
+  updatePosState();
 });
+
+// Dim the position card when not in Express (position only affects Express).
+function updatePosState() {
+  const card = document.getElementById('posCard');
+  if (card) card.classList.toggle('dimmed', selectedMode !== 'express');
+}
 
 // Model selector
 document.querySelectorAll('[data-model]').forEach(btn => {
@@ -43,6 +57,16 @@ document.querySelectorAll('[data-mode]').forEach(btn => {
     document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     selectedMode = btn.dataset.mode;
+    updatePosState();
+  });
+});
+
+// Position selector (Express only)
+document.querySelectorAll('[data-pos]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-pos]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedPos = btn.dataset.pos;
   });
 });
 
@@ -54,7 +78,8 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     stealthSettings: {
       geminiApiKey: apiKey,
       model: selectedModel,
-      mode: selectedMode
+      mode: selectedMode,
+      pos: selectedPos
     }
   });
 

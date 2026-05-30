@@ -11,9 +11,13 @@
   let isProcessing = false;
   let cancelled = false;
   let currentMode = 'tutor';  // 'tutor' (default) explains; 'express' = short answer
+  let currentPos = 'br';      // express position: br/bl/tr/tl/bc
 
   // Neutral, non-descriptive class name so it doesn't stand out in the DOM.
   const TOAST_CLASS = 'oks-note';
+
+  // Maps the saved position to its CSS modifier class (br = bare default).
+  const POS_CLASS = { br: '', bl: 'oks-bl', tr: 'oks-tr', tl: 'oks-tl', bc: 'oks-bc' };
 
   // Inject the toast style. NEAR-INVISIBLE by design: no background, no pill,
   // just a tiny faint grey text tucked into the bottom-right corner. If you
@@ -42,6 +46,11 @@
       text-align: right;
       pointer-events: none;
     }
+    /* EXPRESS position variants (default = bottom-right above). */
+    .${TOAST_CLASS}.oks-bl { left: 6px; right: auto; text-align: left; }
+    .${TOAST_CLASS}.oks-tr { top: 4px; bottom: auto; }
+    .${TOAST_CLASS}.oks-tl { top: 4px; bottom: auto; left: 6px; right: auto; text-align: left; }
+    .${TOAST_CLASS}.oks-bc { left: 50%; right: auto; transform: translateX(-50%); text-align: center; }
     /* TUTOR mode: a visible, readable card centered at the bottom. */
     .${TOAST_CLASS}.oks-wide {
       bottom: 22px;
@@ -89,9 +98,12 @@
   `;
   document.head.appendChild(style);
 
-  // Load the saved mode once at startup (settings persist in storage.sync).
+  // Load saved settings once at startup (they persist in storage.sync).
   chrome.storage.sync.get('stealthSettings', (r) => {
     if (r.stealthSettings?.mode === 'express') currentMode = 'express';
+    if (r.stealthSettings?.pos && POS_CLASS.hasOwnProperty(r.stealthSettings.pos)) {
+      currentPos = r.stealthSettings.pos;
+    }
   });
 
   // Listen for messages from background
@@ -178,6 +190,8 @@
       const savedModel = result.stealthSettings?.model;
       const model = MODEL_MIGRATION[savedModel] || savedModel || 'gemini-3.5-flash';
       currentMode = result.stealthSettings?.mode === 'express' ? 'express' : 'tutor';
+      const savedPos = result.stealthSettings?.pos;
+      if (savedPos && POS_CLASS.hasOwnProperty(savedPos)) currentPos = savedPos;
 
       if (!apiKey) {
         showMessage('⚠️ Brak klucza API', 3000);
@@ -285,7 +299,9 @@
     if (existing) existing.remove();
 
     const msg = document.createElement('div');
-    msg.className = TOAST_CLASS + (wide ? ' oks-wide' : '');
+    // Position only applies to express (non-wide) notes; tutor card is always centered.
+    const posClass = (!wide && POS_CLASS[currentPos]) ? ' ' + POS_CLASS[currentPos] : '';
+    msg.className = TOAST_CLASS + (wide ? ' oks-wide' : posClass);
     if (html) {
       msg.innerHTML = text;   // only ever fed renderTutor() output (pre-escaped)
     } else {
