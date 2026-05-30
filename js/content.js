@@ -153,7 +153,7 @@
       showMessage(request.label, 900);
     }
     if (request.action === 'error') {
-      showMessage('❌ ' + request.message, 2000);
+      showMessage('❌ ' + request.message, 4500);
     }
   });
 

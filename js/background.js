@@ -73,7 +73,8 @@ chrome.commands.onCommand.addListener(async (command) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
-  if (command === 'solve_fast' || command === 'solve_internet') {
+  // solve_alt is a backup shortcut (no default key) - behaves like solve_fast.
+  if (command === 'solve_fast' || command === 'solve_internet' || command === 'solve_alt') {
     try {
       const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
       try {
@@ -86,7 +87,15 @@ chrome.commands.onCommand.addListener(async (command) => {
         dbg('Cannot run on this page');
       }
     } catch (error) {
+      // Screenshot failed (restricted page, lost permission, etc.) - tell the
+      // user instead of silently doing nothing.
       dbg('Screenshot error:', error);
+      try {
+        await chrome.tabs.sendMessage(tab.id, {
+          action: 'error',
+          message: 'Nie udało się zrobić zrzutu - odśwież stronę i spróbuj ponownie'
+        });
+      } catch (e) { /* content script not loaded - cannot show anything here */ }
     }
   }
 

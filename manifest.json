@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "OKStudy",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Make studying OK again - tryb Tłumacz (krok po kroku) lub Express, Gemini Vision, skróty Alt+O/I/P/K/M",
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": [
@@ -42,6 +42,9 @@
     },
     "toggle_model": {
       "description": "Przełącz model Flash/Pro (ustaw skrót ręcznie, np. Alt+M)"
+    },
+    "solve_alt": {
+      "description": "Szybka analiza - zapasowy skrót (ustaw ręcznie, np. Alt+A, gdy Alt+O zajęte)"
     }
   },
   "background": {
