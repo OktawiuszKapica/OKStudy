@@ -7,16 +7,26 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0f172a;
+      background:
+        radial-gradient(900px circle at 50% -10%, rgba(34, 197, 94, 0.18), transparent 55%),
+        radial-gradient(700px circle at 90% 110%, rgba(59, 130, 246, 0.12), transparent 50%),
+        #0b1120;
       color: #e2e8f0;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 24px 0;
     }
     .container {
-      max-width: 400px;
-      padding: 32px;
+      width: 420px;
+      max-width: 92vw;
+      padding: 36px 32px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(6px);
     }
     .header {
       text-align: center;
@@ -205,13 +215,164 @@
       margin-left: 4px;
       opacity: 0.7;
     }
+    .brand-logo {
+      width: 230px;
+      max-width: 78%;
+      height: auto;
+      display: block;
+      margin: 0 auto 14px;
+      filter: drop-shadow(0 6px 20px rgba(34, 197, 94, 0.18));
+    }
+    /* Portfolio promo - subtle highlight card */
+    .promo {
+      position: relative;
+      margin-top: 28px;
+      padding: 22px 20px;
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, rgba(34, 197, 94, 0.10), rgba(255, 255, 255, 0.02));
+      border: 1px solid rgba(34, 197, 94, 0.22);
+      text-align: center;
+      overflow: hidden;
+    }
+    .promo::before {
+      content: "";
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 220px;
+      height: 80px;
+      background: radial-gradient(closest-side, rgba(34, 197, 94, 0.35), transparent);
+      pointer-events: none;
+    }
+    .promo-eyebrow {
+      position: relative;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #22c55e;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .promo-title {
+      position: relative;
+      font-size: 16px;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 16px;
+    }
+    .promo-title strong {
+      color: #22c55e;
+      font-weight: 700;
+    }
+    .promo-btn {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: #ffffff;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .promo-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    }
+    .promo-links {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .promo-link {
+      position: relative;
+      flex: 1;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .promo-link:hover {
+      border-color: rgba(34, 197, 94, 0.45);
+      background: rgba(34, 197, 94, 0.08);
+      color: #e2e8f0;
+    }
+    /* Support (beer) - collapsible so the QR stays hidden until clicked */
+    .beer {
+      position: relative;
+      margin-top: 8px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+    .beer > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #94a3b8;
+      text-align: center;
+      transition: color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .beer > summary::-webkit-details-marker { display: none; }
+    .beer > summary:hover {
+      color: #fcd34d;
+      background: rgba(251, 191, 36, 0.08);
+    }
+    .beer[open] > summary {
+      color: #fcd34d;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .beer-body {
+      padding: 16px 14px 18px;
+      text-align: center;
+    }
+    .beer-joke {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.55;
+      margin-bottom: 14px;
+    }
+    .beer-qr {
+      width: 180px;
+      max-width: 70%;
+      height: auto;
+      border-radius: 10px;
+      display: block;
+      margin: 0 auto 10px;
+    }
+    .beer-handle {
+      font-size: 13px;
+      font-weight: 700;
+      color: #e2e8f0;
+      letter-spacing: 0.3px;
+    }
+    .beer-hint {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">👁️</div>
-      <h1>OKStudy</h1>
+      <img src="logo.png" alt="OKStudy" class="brand-logo">
       <p class="subtitle">Make studying OK again</p>
     </div>
 
@@ -224,40 +385,88 @@
     <div class="card">
       <label>Model AI</label>
       <div class="model-selector">
-        <button class="model-option active" data-model="gemini-3-flash-preview">
+        <button class="model-option active" data-model="gemini-3.5-flash">
           <span class="model-icon">⚡</span>
-          <span class="model-name">Gemini 3 Flash</span>
-          <span class="model-desc">Najnowszy, szybki</span>
+          <span class="model-name">Gemini 3.5 Flash</span>
+          <span class="model-desc">Najnowszy, szybki + mądry</span>
         </button>
-        <button class="model-option" data-model="gemini-3-pro-preview">
+        <button class="model-option" data-model="gemini-3.1-pro-preview">
           <span class="model-icon">🧠</span>
-          <span class="model-name">Gemini 3 Pro</span>
-          <span class="model-desc">Najnowszy, najinteligentniejszy</span>
+          <span class="model-name">Gemini 3.1 Pro</span>
+          <span class="model-desc">Maks. inteligencja (preview)</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Tryb działania</label>
+      <div class="model-selector">
+        <button class="model-option mode-option active" data-mode="tutor">
+          <span class="model-icon">🎓</span>
+          <span class="model-name">Tłumacz</span>
+          <span class="model-desc">Wyjaśnia krok po kroku</span>
+        </button>
+        <button class="model-option mode-option" data-mode="express">
+          <span class="model-icon">⚡</span>
+          <span class="model-name">Express</span>
+          <span class="model-desc">Sama odpowiedź, dyskretnie</span>
         </button>
       </div>
     </div>
 
     <button id="saveBtn">💾 Zapisz</button>
+    <button id="testBtn" style="margin-top:10px; background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); color:#60a5fa;">🔌 Sprawdź klucz</button>
     <div class="status" id="status">✅ Zapisano!</div>
+    <div class="status" id="testStatus"></div>
 
     <div class="usage">
       <h3>📖 Jak używać</h3>
       <p>
         <span class="shortcut">Alt+O</span> - ⚡ Szybka analiza<br>
         <span class="shortcut">Alt+I</span> - 🌐 Z wyszukiwaniem Google<br>
-        <span class="shortcut">Alt+P</span> - 🔁 Powtórz ostatnią odpowiedź<br><br>
+        <span class="shortcut">Alt+P</span> - 🔁 Powtórz odpowiedź <span style="color:#64748b">(naciskaj = starsze, przytrzymaj = kopiuj)</span><br>
+        <span class="shortcut">Alt+K</span> - ✕ Przerwij / kasuj analizę<br>
+        <span class="shortcut">Alt+M</span> - 🔄 Przełącz model Flash/Pro <span style="color:#64748b">(ustaw w chrome://extensions/shortcuts)</span><br><br>
         <strong>Obsługuje:</strong> pytania zamknięte (A/B/C/D), wielokrotny wybór, prawda/fałsz, pytania otwarte (liczby, tekst).
       </p>
     </div>
 
-    <div class="footer">
-      v1.0.0 • Created by <strong>Oktawiusz Kapica</strong> • 
-      <a href="https://github.com/OktawiuszKapica/OKStudy" target="_blank">
-        GitHub
-        <svg class="github-icon" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-        </svg>
+    <div class="promo">
+      <div class="promo-eyebrow">Autor wtyczki</div>
+      <div class="promo-title">Stworzone przez <strong>Oktawiusz Kapica</strong></div>
+      <a class="promo-btn" href="https://oktawiuszkapica.pl" target="_blank" rel="noopener">
+        Zobacz moje portfolio
       </a>
+      <div class="promo-links">
+        <a class="promo-link" href="https://github.com/OktawiuszKapica" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          GitHub
+        </a>
+        <a class="promo-link" href="mailto:hello@oktawiuszkapica.pl">
+          ✉️ Kontakt
+        </a>
+      </div>
+
+      <details class="beer">
+        <summary>🍺 Podobała Ci się wtyczka? Postaw piwo</summary>
+        <div class="beer-body">
+          <p class="beer-joke">
+            Za darmo, bez reklam i bez haczyków.<br>
+            Jeśli OKStudy oszczędziło Ci trochę nerwów,<br>
+            możesz postawić mi piwo. Nie musisz, ale będzie miło. 🍻
+          </p>
+          <img src="revolut-qr.jpg" alt="Revolut QR" class="beer-qr">
+          <div class="beer-handle">@oktawi42p</div>
+          <div class="beer-hint">Zeskanuj telefonem lub wpisz w aplikacji Revolut</div>
+        </div>
+      </details>
+    </div>
+
+    <div class="footer">
+      OKStudy v1.2.0 • © Oktawiusz Kapica •
+      <a href="https://oktawiuszkapica.pl" target="_blank" rel="noopener">OktawiuszKapica.pl</a>
     </div>
   </div>
 

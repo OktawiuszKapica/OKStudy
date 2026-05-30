@@ -1,13 +1,16 @@
 {
   "manifest_version": 3,
   "name": "OKStudy",
-  "version": "1.0.0",
-  "description": "Make studying OK again - Alt+O szybka analiza, Alt+I z internetem, Alt+P powtórz",
+  "version": "1.2.0",
+  "description": "Make studying OK again - tryb Tłumacz (krok po kroku) lub Express, Gemini Vision, skróty Alt+O/I/P/K/M",
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*"
   ],
   "options_page": "options.html",
+  "action": {
+    "default_title": "OKStudy - ustawienia"
+  },
   "commands": {
     "solve_fast": {
       "suggested_key": {
@@ -29,6 +32,16 @@
         "mac": "Alt+P"
       },
       "description": "Powtórz ostatnią odpowiedź"
+    },
+    "cancel": {
+      "suggested_key": {
+        "default": "Alt+K",
+        "mac": "Alt+K"
+      },
+      "description": "Przerwij / kasuj bieżącą analizę"
+    },
+    "toggle_model": {
+      "description": "Przełącz model Flash/Pro (ustaw skrót ręcznie, np. Alt+M)"
     }
   },
   "background": {
