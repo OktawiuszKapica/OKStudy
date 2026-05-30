@@ -55,6 +55,7 @@ let models = {
 };
 let selectedMode = 'tutor';
 let selectedPos = 'br';
+let selectedVoice = 'off';
 
 const keyInput = document.getElementById('apiKey');
 
@@ -75,6 +76,7 @@ chrome.storage.sync.get('stealthSettings', (result) => {
 
   if (s.mode) selectedMode = s.mode === 'express' ? 'express' : 'tutor';
   if (s.pos) selectedPos = s.pos;
+  selectedVoice = s.voice ? 'on' : 'off';
 
   // Reflect provider/mode/pos in the static buttons
   document.querySelectorAll('[data-provider]').forEach(b =>
@@ -83,9 +85,20 @@ chrome.storage.sync.get('stealthSettings', (result) => {
     b.classList.toggle('active', b.dataset.mode === selectedMode));
   document.querySelectorAll('[data-pos]').forEach(b =>
     b.classList.toggle('active', b.dataset.pos === selectedPos));
+  document.querySelectorAll('[data-voice]').forEach(b =>
+    b.classList.toggle('active', b.dataset.voice === selectedVoice));
 
   renderProvider();
   updatePosState();
+});
+
+// Voice selector (Tekst / Głos)
+document.querySelectorAll('[data-voice]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-voice]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedVoice = btn.dataset.voice;
+  });
 });
 
 // ---- Render the key field + model buttons for the active provider ----------
@@ -185,6 +198,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       models: models,
       mode: selectedMode,
       pos: selectedPos,
+      voice: selectedVoice === 'on',
       // legacy mirror so older builds still find a Gemini key
       geminiApiKey: keys.gemini,
       model: models.gemini
@@ -199,13 +213,20 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 // ---- Connection test (per provider) ----------------------------------------
 function friendlyError(status, rawText) {
   const t = (rawText || '').toLowerCase();
-  if (status === 400 && (t.includes('api_key_invalid') || t.includes('api key not valid'))) {
+  // Insufficient funds: Claude returns this as a 400, OpenAI/Grok as 429.
+  if (t.includes('credit balance is too low') || t.includes('insufficient_quota') ||
+      t.includes('insufficient credits') || t.includes('billing')) {
+    return '💳 Klucz OK, ale konto bez środków - doładuj konto API';
+  }
+  if (t.includes('api_key_invalid') || t.includes('api key not valid') ||
+      t.includes('invalid_api_key') || t.includes('incorrect api key')) {
     return '🔑 Nieprawidłowy klucz API';
   }
   if (status === 400) return '⚠️ Błędne zapytanie - sprawdź klucz lub model';
-  if (status === 401 || status === 403) return '🚫 Brak dostępu - sprawdź klucz i uprawnienia';
+  if (status === 401) return '🔑 Nieprawidłowy klucz API';
+  if (status === 403) return '🚫 Brak dostępu - sprawdź klucz i uprawnienia';
   if (status === 404) return '🔍 Ten model jest niedostępny dla Twojego klucza';
-  if (status === 429) return '⏳ Limit zapytań - odczekaj chwilę';
+  if (status === 429) return '⏳ Limit zapytań lub brak środków - odczekaj lub doładuj';
   if (status >= 500) return '🛠️ Serwer przeciążony - spróbuj ponownie';
   return '❌ Błąd ' + status;
 }

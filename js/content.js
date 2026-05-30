@@ -12,6 +12,7 @@
   let cancelled = false;
   let currentMode = 'tutor';  // 'tutor' (default) explains; 'express' = short answer
   let currentPos = 'br';      // express position: br/bl/tr/tl/bc
+  let voiceOn = false;        // read the answer aloud (Web Speech API)
 
   // Neutral, non-descriptive class name so it doesn't stand out in the DOM.
   const TOAST_CLASS = 'oks-note';
@@ -119,7 +120,72 @@
     if (r.stealthSettings?.pos && POS_CLASS.hasOwnProperty(r.stealthSettings.pos)) {
       currentPos = r.stealthSettings.pos;
     }
+    voiceOn = !!r.stealthSettings?.voice;
   });
+
+  // Speak text aloud in Polish via the browser's built-in synthesizer.
+  // Chrome's speechSynthesis is notoriously flaky on the FIRST call:
+  //  - getVoices() is empty until voices load asynchronously,
+  //  - the engine "sleeps" after idle and silently ignores speak(),
+  //  - cancel() immediately before speak() can kill the new utterance.
+  // We work around all three below.
+
+  let voicesReady = false;
+  function primeVoices() {
+    try {
+      if (!('speechSynthesis' in window)) return;
+      if (window.speechSynthesis.getVoices().length) voicesReady = true;
+      // voiceschanged fires once the list is populated
+      window.speechSynthesis.onvoiceschanged = () => {
+        if (window.speechSynthesis.getVoices().length) voicesReady = true;
+      };
+    } catch (e) { /* ignore */ }
+  }
+  primeVoices();
+
+  function pickPolishVoice() {
+    try {
+      const vs = window.speechSynthesis.getVoices() || [];
+      return vs.find(v => /pl[-_]?PL/i.test(v.lang)) ||
+             vs.find(v => /^pl/i.test(v.lang)) || null;
+    } catch (e) { return null; }
+  }
+
+  function doSpeak(text) {
+    const synth = window.speechSynthesis;
+    const u = new SpeechSynthesisUtterance(String(text));
+    u.lang = 'pl-PL';
+    u.rate = 1.0;
+    const v = pickPolishVoice();
+    if (v) u.voice = v;
+    // Wake the engine if Chrome put it to sleep, then speak.
+    try { synth.resume(); } catch (e) { /* ignore */ }
+    synth.speak(u);
+  }
+
+  function speak(text) {
+    try {
+      if (!('speechSynthesis' in window) || !text) return;
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      // If voices aren't loaded yet (first run), wait a tick so the very first
+      // utterance isn't swallowed. Otherwise speak on a 0ms timeout to dodge
+      // the cancel()->speak() race.
+      const delay = voicesReady ? 0 : 250;
+      setTimeout(() => { try { doSpeak(text); } catch (e) { /* ignore */ } }, delay);
+    } catch (e) { /* ignore */ }
+  }
+  function stopSpeaking() {
+    try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+  }
+
+  // Pull the short spoken phrase out of a tutor answer: the "Wniosek:" line.
+  function extractConclusion(raw) {
+    const m = (raw || '').match(/Wniosek:\s*([\s\S]+)/i);
+    let t = m ? m[1] : (raw || '');
+    // strip markdown so the synthesizer doesn't read asterisks/hashes
+    return t.replace(/[*#`>_-]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+  }
 
   // Listen for messages from background
   chrome.runtime.onMessage.addListener((request) => {
@@ -127,17 +193,25 @@
       handleSolve(request.screenshot, request.useInternet);
     }
     if (request.action === 'showAnswer' && request.answer) {
-      // Repeat a stored answer (respect the current mode)
-      if (currentMode === 'tutor') {
+      // Repeat a stored answer (respect current mode + voice setting)
+      if (voiceOn) {
+        if (currentMode === 'tutor') {
+          speak(extractConclusion(request.answer));
+        } else {
+          const p = parseResponse(request.answer);
+          speak((p.letters.length ? p.letters.join(', ') : p.answer) || '');
+        }
+      } else if (currentMode === 'tutor') {
         showMessage(renderTutor(request.answer), tutorDuration(request.answer), true, true);
       } else {
         displayAnswer(parseResponse(request.answer));
       }
     }
     if (request.action === 'cancel') {
-      // User pressed Alt+K - stop and clear everything
+      // User pressed Alt+K - stop everything (clear bubble AND stop speaking)
       cancelled = true;
       isProcessing = false;
+      stopSpeaking();
       const existing = ensureRoot().querySelector('.' + TOAST_CLASS);
       if (existing) existing.remove();
       showMessage('✕', 700);
@@ -222,6 +296,7 @@
 
       currentMode = s.mode === 'express' ? 'express' : 'tutor';
       if (s.pos && POS_CLASS.hasOwnProperty(s.pos)) currentPos = s.pos;
+      voiceOn = !!s.voice;
 
       if (!apiKey) {
         const NAMES = { gemini: 'Gemini', claude: 'Claude', openai: 'ChatGPT', grok: 'Grok' };
@@ -248,7 +323,15 @@
 
       if (response.success) {
         dbg('AI response received');
-        if (currentMode === 'tutor') {
+        if (voiceOn) {
+          // Voice mode: speak only, no on-screen bubble (max screen discretion).
+          if (currentMode === 'tutor') {
+            speak(extractConclusion(response.data));
+          } else {
+            const p = parseResponse(response.data);
+            speak((p.letters.length ? p.letters.join(', ') : p.answer) || '');
+          }
+        } else if (currentMode === 'tutor') {
           showMessage(renderTutor(response.data), tutorDuration(response.data), true, true);
         } else {
           displayAnswer(parseResponse(response.data));

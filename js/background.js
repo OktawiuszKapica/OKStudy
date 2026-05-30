@@ -283,13 +283,20 @@ function isApiKeyError(error) {
 
 function friendlyError(status, rawText) {
   const t = (rawText || '').toLowerCase();
-  if (status === 400 && (t.includes('api_key_invalid') || t.includes('api key not valid'))) {
+  // Insufficient funds: Claude returns this as a 400, OpenAI/Grok as 429.
+  if (t.includes('credit balance is too low') || t.includes('insufficient_quota') ||
+      t.includes('insufficient credits') || t.includes('billing')) {
+    return '💳 Brak środków na koncie - doładuj konto API';
+  }
+  if (t.includes('api_key_invalid') || t.includes('api key not valid') ||
+      t.includes('invalid_api_key') || t.includes('incorrect api key')) {
     return '🔑 Nieprawidłowy klucz API';
   }
   if (status === 400) return '⚠️ Błędne zapytanie - sprawdź klucz lub model';
-  if (status === 401 || status === 403) return '🚫 Brak dostępu - sprawdź klucz API i uprawnienia';
+  if (status === 401) return '🔑 Nieprawidłowy klucz API';
+  if (status === 403) return '🚫 Brak dostępu - sprawdź klucz API i uprawnienia';
   if (status === 404) return '🔍 Model niedostępny dla tego klucza';
-  if (status === 429) return '⏳ Limit zapytań - odczekaj chwilę lub spróbuj jutro';
+  if (status === 429) return '⏳ Limit zapytań lub brak środków - odczekaj lub doładuj konto';
   if (status >= 500) return '🛠️ Serwer przeciążony - spróbuj ponownie';
   return '❌ Błąd ' + status;
 }

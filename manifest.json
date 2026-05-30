@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "OKStudy",
-  "version": "1.3.0",
-  "description": "Make studying OK again - multi-AI (Gemini / Claude / ChatGPT), tryb Tłumacz lub Express, skróty Alt+O/I/P/K/M",
+  "version": "1.4.0",
+  "description": "Make studying OK again - multi-AI (Gemini / Claude / ChatGPT / Grok), tryb Tłumacz lub Express, czytanie na głos, skróty Alt+O/I/P/K/M",
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
