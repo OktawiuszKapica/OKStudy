@@ -19,12 +19,15 @@
   // Maps the saved position to its CSS modifier class (br = bare default).
   const POS_CLASS = { br: '', bl: 'oks-bl', tr: 'oks-tr', tl: 'oks-tl', bc: 'oks-bc' };
 
-  // Inject the toast style. NEAR-INVISIBLE by design: no background, no pill,
-  // just a tiny faint grey text tucked into the bottom-right corner. If you
-  // don't know it's there, you won't notice it. A whisper-thin shadow keeps it
-  // *barely* legible on both light and dark pages without drawing the eye.
-  const style = document.createElement('style');
-  style.textContent = `
+  // The note lives in a closed Shadow DOM attached to <html> (documentElement),
+  // NOT <body>. Why: if any page ancestor has transform/filter/perspective,
+  // `position: fixed` is measured against THAT box instead of the viewport - so
+  // at >100% browser zoom a body-mounted note gets pushed off-screen. Mounting
+  // on the root element makes positioning reliably viewport-relative at any
+  // zoom, and isolates us from the page's CSS.
+  // NEAR-INVISIBLE by design: faint grey text, no background, tucked in a corner.
+  let shadowRoot = null;
+  const STYLE_CSS = `
     .${TOAST_CLASS} {
       position: fixed;
       bottom: 4px;
@@ -96,7 +99,19 @@
       padding: 1px 5px; font-size: 13px;
     }
   `;
-  document.head.appendChild(style);
+
+  // Lazily build (or rebuild, if an SPA wiped it) the shadow host on <html>.
+  function ensureRoot() {
+    if (shadowRoot && document.documentElement.contains(shadowRoot.host)) return shadowRoot;
+    const host = document.createElement('div');
+    host.style.cssText = 'all: initial;';   // no transform / stacking context of its own
+    shadowRoot = host.attachShadow({ mode: 'closed' });
+    const s = document.createElement('style');
+    s.textContent = STYLE_CSS;
+    shadowRoot.appendChild(s);
+    document.documentElement.appendChild(host);
+    return shadowRoot;
+  }
 
   // Load saved settings once at startup (they persist in storage.sync).
   chrome.storage.sync.get('stealthSettings', (r) => {
@@ -123,7 +138,7 @@
       // User pressed Alt+K - stop and clear everything
       cancelled = true;
       isProcessing = false;
-      const existing = document.querySelector('.' + TOAST_CLASS);
+      const existing = ensureRoot().querySelector('.' + TOAST_CLASS);
       if (existing) existing.remove();
       showMessage('✕', 700);
     }
@@ -295,7 +310,8 @@
   }
 
   function showMessage(text, duration = 2000, wide = false, html = false) {
-    const existing = document.querySelector('.' + TOAST_CLASS);
+    const root = ensureRoot();
+    const existing = root.querySelector('.' + TOAST_CLASS);
     if (existing) existing.remove();
 
     const msg = document.createElement('div');
@@ -307,7 +323,7 @@
     } else {
       msg.textContent = text;
     }
-    document.body.appendChild(msg);
+    root.appendChild(msg);
 
     if (duration > 0) {
       setTimeout(() => msg.remove(), duration);
