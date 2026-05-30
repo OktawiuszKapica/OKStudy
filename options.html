@@ -161,6 +161,38 @@
       color: #22c55e;
     }
     #posCard.dimmed { opacity: 0.45; }
+    #updateBanner {
+      display: block;
+      margin: -8px 0 20px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      color: #22c55e;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    #updateBanner:hover { background: rgba(34, 197, 94, 0.25); }
+    /* Provider picker: 2x2 grid with real logos */
+    .provider-grid { flex-wrap: wrap; }
+    .provider-option { flex: 1 1 calc(50% - 4px); min-width: 0; }
+    .provider-logo {
+      display: block;
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+      margin: 0 auto 6px;
+    }
+    /* ChatGPT logo is black-on-white; give it a light chip so it shows on dark UI */
+    .provider-option[data-provider="openai"] .provider-logo,
+    .provider-option[data-provider="grok"] .provider-logo {
+      background: #fff;
+      border-radius: 6px;
+      padding: 3px;
+    }
     button {
       width: 100%;
       padding: 14px;
@@ -398,26 +430,46 @@
       <p class="subtitle">Make studying OK again</p>
     </div>
 
+    <a id="updateBanner" href="https://github.com/OktawiuszKapica/OKStudy/releases/latest" target="_blank" rel="noopener" style="display:none;">
+      🎉 Dostępna nowa wersja <span id="updateVer"></span> - kliknij, aby pobrać
+    </a>
+
     <div class="card">
-      <label for="apiKey">Klucz API Gemini</label>
+      <label>Dostawca AI</label>
+      <div class="model-selector provider-grid">
+        <button class="model-option provider-option active" data-provider="gemini">
+          <img class="provider-logo" src="gemini.png" alt="">
+          <span class="model-name">Gemini</span>
+          <span class="model-desc">darmowy</span>
+        </button>
+        <button class="model-option provider-option" data-provider="claude">
+          <img class="provider-logo" src="claude.png" alt="">
+          <span class="model-name">Claude</span>
+          <span class="model-desc">płatny</span>
+        </button>
+        <button class="model-option provider-option" data-provider="openai">
+          <img class="provider-logo" src="chatgpt.jpg" alt="">
+          <span class="model-name">ChatGPT</span>
+          <span class="model-desc">płatny</span>
+        </button>
+        <button class="model-option provider-option" data-provider="grok">
+          <img class="provider-logo" src="grok.webp" alt="">
+          <span class="model-name">Grok</span>
+          <span class="model-desc">płatny</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <label id="keyLabel" for="apiKey">Klucz API Gemini</label>
       <input type="password" id="apiKey" placeholder="AIza...">
-      <p class="hint">Pobierz: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a></p>
+      <p class="hint" id="keyHint"></p>
     </div>
 
     <div class="card">
       <label>Model AI</label>
-      <div class="model-selector">
-        <button class="model-option active" data-model="gemini-3.5-flash">
-          <span class="model-icon">⚡</span>
-          <span class="model-name">Gemini 3.5 Flash</span>
-          <span class="model-desc">Najnowszy, szybki + mądry</span>
-        </button>
-        <button class="model-option" data-model="gemini-3.1-pro-preview">
-          <span class="model-icon">🧠</span>
-          <span class="model-name">Gemini 3.1 Pro</span>
-          <span class="model-desc">Maks. inteligencja (preview)</span>
-        </button>
-      </div>
+      <div class="model-selector" id="modelSelector"></div>
+      <p class="hint" id="usageLine" style="display:none;"></p>
     </div>
 
     <div class="card">
@@ -499,7 +551,7 @@
     </div>
 
     <div class="footer">
-      OKStudy v1.2.1 • © Oktawiusz Kapica •
+      OKStudy v1.3.0 • © Oktawiusz Kapica •
       <a href="https://oktawiuszkapica.pl" target="_blank" rel="noopener">OktawiuszKapica.pl</a>
     </div>
   </div>

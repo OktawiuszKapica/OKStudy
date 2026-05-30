@@ -1,11 +1,14 @@
 {
   "manifest_version": 3,
   "name": "OKStudy",
-  "version": "1.2.1",
-  "description": "Make studying OK again - tryb Tłumacz (krok po kroku) lub Express, Gemini Vision, skróty Alt+O/I/P/K/M",
+  "version": "1.3.0",
+  "description": "Make studying OK again - multi-AI (Gemini / Claude / ChatGPT), tryb Tłumacz lub Express, skróty Alt+O/I/P/K/M",
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": [
-    "https://generativelanguage.googleapis.com/*"
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.anthropic.com/*",
+    "https://api.openai.com/*",
+    "https://api.x.ai/*"
   ],
   "options_page": "options.html",
   "action": {

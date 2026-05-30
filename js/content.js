@@ -197,19 +197,35 @@
 
     try {
       const result = await chrome.storage.sync.get('stealthSettings');
-      const apiKey = result.stealthSettings?.geminiApiKey;
-      const MODEL_MIGRATION = {
+      const s = result.stealthSettings || {};
+
+      const DEFAULTS = {
+        gemini: 'gemini-3.5-flash',
+        claude: 'claude-sonnet-4-6',
+        openai: 'gpt-5-mini',
+        grok: 'grok-4'
+      };
+      const GEMINI_MIGRATION = {
         'gemini-3-flash-preview': 'gemini-3.5-flash',
         'gemini-3-pro-preview': 'gemini-3.1-pro-preview'
       };
-      const savedModel = result.stealthSettings?.model;
-      const model = MODEL_MIGRATION[savedModel] || savedModel || 'gemini-3.5-flash';
-      currentMode = result.stealthSettings?.mode === 'express' ? 'express' : 'tutor';
-      const savedPos = result.stealthSettings?.pos;
-      if (savedPos && POS_CLASS.hasOwnProperty(savedPos)) currentPos = savedPos;
+
+      const provider = ['gemini', 'claude', 'openai', 'grok'].includes(s.provider) ? s.provider : 'gemini';
+
+      // Key + model: new per-provider maps, with legacy single fields as gemini fallback.
+      const keys = s.keys || {};
+      const apiKey = keys[provider] || (provider === 'gemini' ? s.geminiApiKey : '') || '';
+
+      const models = s.models || {};
+      let model = models[provider] || (provider === 'gemini' ? s.model : '') || DEFAULTS[provider];
+      if (provider === 'gemini') model = GEMINI_MIGRATION[model] || model;
+
+      currentMode = s.mode === 'express' ? 'express' : 'tutor';
+      if (s.pos && POS_CLASS.hasOwnProperty(s.pos)) currentPos = s.pos;
 
       if (!apiKey) {
-        showMessage('⚠️ Brak klucza API', 3000);
+        const NAMES = { gemini: 'Gemini', claude: 'Claude', openai: 'ChatGPT', grok: 'Grok' };
+        showMessage('⚠️ Brak klucza API (' + (NAMES[provider] || provider) + ')', 3000);
         isProcessing = false;
         return;
       }
@@ -217,6 +233,7 @@
       const response = await chrome.runtime.sendMessage({
         action: 'callGeminiVision',
         screenshot: screenshot,
+        provider: provider,
         apiKey: apiKey,
         model: model,
         useInternet: useInternet,

@@ -6,7 +6,7 @@
 
 > **Make studying OK again** ✨
 
-Minimalistyczna wtyczka Chrome do wspomagania nauki, oparta o **Gemini Vision API**. Robi zrzut ekranu, analizuje treść zadania i pomaga je zrozumieć.
+Minimalistyczna wtyczka Chrome do wspomagania nauki. Robi zrzut ekranu, analizuje treść zadania i pomaga je zrozumieć. Obsługuje **czterech dostawców AI: Gemini, Claude, ChatGPT i Grok** (model do wyboru, każdy na własnym kluczu API - „bring your own key").
 
 ## 🎓 Tryby działania
 
@@ -40,10 +40,15 @@ Wtyczka ma dwa tryby (przełączane w ustawieniach, wybór zapisuje się na sta�
 ## ⚙️ Konfiguracja
 
 1. Kliknij ikonę wtyczki lub wejdź w opcje
-2. Wklej swój klucz API Gemini ([pobierz tutaj](https://aistudio.google.com/apikey))
-3. Wybierz model (Gemini 3.5 Flash lub 3.1 Pro)
-4. Wybierz tryb działania (🎓 Tłumacz lub ⚡ Express)
-5. Zapisz
+2. Wybierz dostawcę AI (Gemini / Claude / ChatGPT / Grok)
+3. Wklej swój klucz API tego dostawcy:
+   - Gemini (darmowy): [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+   - Claude (wymaga karty): [console.anthropic.com](https://console.anthropic.com/settings/keys)
+   - ChatGPT (wymaga karty): [platform.openai.com](https://platform.openai.com/api-keys)
+   - Grok (wymaga karty): [console.x.ai](https://console.x.ai)
+4. Wybierz model
+5. Wybierz tryb działania (🎓 Tłumacz lub ⚡ Express)
+6. Zapisz
 
 ## 🎯 Jak używać
 
@@ -77,6 +82,14 @@ wyszukiwania**, żebyś i tak dostał odpowiedź zamiast błędu.
 - Klucz API Google Gemini
 
 ## 📝 Changelog
+
+### v1.3.0
+- 🤖 **Multi-AI** - do wyboru **Gemini, Claude, ChatGPT i Grok** (każdy na własnym kluczu)
+- 🔑 Osobne klucze i modele zapamiętywane per dostawca
+- 🧪 Test klucza działa dla każdego z dostawców
+- 🎨 Prawdziwe logo każdego dostawcy w ustawieniach
+- 📋 Modele: Gemini 3.5 Flash / 3.1 Pro, Claude Sonnet 4.6 / Haiku 4.5 / Opus 4.8, GPT-5 mini / GPT-5.5, Grok 4 / Grok 4 Fast
+- ℹ️ Wyszukiwarka (Alt+I) działa tylko dla Gemini; dla pozostałych dostawców traktowana jak zwykła analiza
 
 ### v1.2.1
 - 🐛 **Naprawka pozycji przy zoomie** - dymek nie ucieka poza ekran przy powiększeniu przeglądarki innym niż 100% (np. 125%, 150%)
