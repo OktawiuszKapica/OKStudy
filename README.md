@@ -18,7 +18,7 @@ Rozszerzenie Chrome do nauki z Gemini, Claude, OpenAI lub Grok. Własna identyfi
 
 ## Instalacja i aktualizacja
 
-1. Rozpakuj paczkę `OKStudy-2.0.0.zip`. Folder **OKStudy** zawiera `manifest.json`.
+1. Rozpakuj paczkę `OKStudy-2.0.1.zip`. Folder **OKStudy** zawiera `manifest.json`.
 2. Otwórz `chrome://extensions`, włącz **Tryb dewelopera** i wybierz **Załaduj rozpakowane**.
 3. Wskaż folder OKStudy i przypnij ikonę do paska przeglądarki.
 4. W ustawieniach wybierz dostawcę i sposób połączenia, a następnie **Zapisz ustawienia**.
@@ -44,10 +44,14 @@ Logowanie wymaga lokalnego modułu **companion** i Node.js 22+. Rozszerzenie kom
 1. W ustawieniach wybierz **OpenAI → Konto ChatGPT**.
 2. Rozwiń instrukcję pierwszego połączenia i skopiuj polecenie zawierające identyfikator Twojego rozszerzenia.
 3. Otwórz PowerShell w folderze `companion` z paczki i wykonaj skopiowane polecenie. Instalator działa dla bieżącego użytkownika, bez administratora, i rejestruje moduł dla Chrome, Edge oraz Brave.
-4. Kliknij **Continue with ChatGPT**, zaakceptuj komunikację z modułem i dokończ logowanie na stronie OpenAI.
+4. Kliknij **Continue with ChatGPT** i dokończ logowanie na stronie OpenAI.
 5. Wybierz udostępniony model i zapisz ustawienia.
 
 Instalator kopiuje moduł do `%LOCALAPPDATA%\OKStudy\native-host`. Powtórz instalację po zmianie folderu/identyfikatora rozszerzenia albo aktualizacji modułu. Kopie rozszerzenia z innym ID wymagają osobnej rejestracji dozwolonego ID.
+
+Od wersji 2.0.1 uprawnienie do komunikacji z modułem jest deklarowane przy instalacji rozszerzenia, żeby Chrome udostępniał je od uruchomienia. Sam moduł nadal instalujesz tylko wtedy, gdy chcesz korzystać z planu ChatGPT. Przy aktualizacji przeładuj rozszerzenie w `chrome://extensions` i ponownie otwórz jego ustawienia. Jeśli Chrome wyświetli prośbę o zaakceptowanie uprawnienia, potwierdź ją, aby włączyć połączenie.
+
+Komunikat o braku funkcji połączenia oznacza konieczność przeładowania rozszerzenia; komunikat „Nie znaleziono modułu ChatGPT” oznacza brak instalacji modułu. Po przeniesieniu wtyczki do innego folderu użyj polecenia instalacji z jej aktualnych ustawień.
 
 Możesz dodawać konta i przełączać je w ustawieniach. Każda rejestracja ma własny identyfikator. Wylogowanie usuwa lokalne tokeny, zachowuje rejestrację do ponownego logowania i próbuje zakończyć odnawialną sesję w OpenAI. Jeśli tego ostatniego nie uda się potwierdzić, OKStudy pokazuje komunikat. Dostępem i limitami zarządzasz w [ustawieniach użycia ChatGPT](https://chatgpt.com/settings/usage).
 

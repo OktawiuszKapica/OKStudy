@@ -394,7 +394,7 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
     }
   })()
     .then((data) => respond({ ok: true, data }))
-    .catch((error) => respond({ ok: false, error: error.message }));
+    .catch((error) => respond({ ok: false, error: error.message, code: error.code }));
   return true;
 });
 chrome.commands.onCommand.addListener((command, commandTab) => {

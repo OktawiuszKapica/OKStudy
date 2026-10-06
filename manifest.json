@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
   "name": "OKStudy",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "minimum_chrome_version": "116",
   "description": "Zaznacz zadanie. Zrozum rozwiązanie. Gemini, Claude, OpenAI i Grok, podpowiedzi, historia oraz opcjonalne konto ChatGPT.",
-  "permissions": ["storage", "activeTab", "scripting", "sidePanel", "contextMenus"],
-  "optional_permissions": ["nativeMessaging"],
+  "permissions": ["storage", "activeTab", "scripting", "sidePanel", "contextMenus", "nativeMessaging"],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
     "https://api.anthropic.com/*",

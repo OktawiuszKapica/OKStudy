@@ -1,5 +1,9 @@
 # Historia wersji
 
+## 2.0.1
+
+Naprawa pierwszego połączenia z kontem ChatGPT: uprawnienie Native Messaging jest dostępne od uruchomienia rozszerzenia. Osobne komunikaty wyjaśniają brak modułu, niedostępne uprawnienie, odmowę dostępu i problem z uruchomieniem Node.js. Poprawione kodowanie instalatora dla Windows PowerShell 5. Dodano testy tego połączenia w rzeczywistym Chromium i kontrolę parsowania instalatora.
+
 ## 2.0.0
 
 Nowy interfejs i identyfikacja, panel nauki, wybór fragmentu, rozmowa, historia, bezpieczniejsza obsługa połączeń i opcjonalny moduł kont ChatGPT.

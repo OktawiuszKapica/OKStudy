@@ -2,8 +2,37 @@ export const HOST_NAME = 'pl.okstudy.chatgpt';
 let port,
   sequence = 0;
 const pending = new Map();
+function connectionError(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+function disconnectedError(reason = '') {
+  if (/not found/i.test(reason))
+    return connectionError(
+      'NATIVE_HOST_NOT_FOUND',
+      'Nie znaleziono modułu ChatGPT. Zainstaluj go według instrukcji w ustawieniach OKStudy, a następnie spróbuj ponownie.'
+    );
+  if (/forbidden|access.*denied|policy|blocked/i.test(reason))
+    return connectionError(
+      'NATIVE_HOST_FORBIDDEN',
+      'Przeglądarka nie zezwala na połączenie z modułem ChatGPT. Uruchom instalator z identyfikatorem tej wtyczki. W przeglądarce zarządzanej dostęp może wymagać zgody administratora.'
+    );
+  if (/failed to start|invalid.*host/i.test(reason))
+    return connectionError(
+      'NATIVE_HOST_START_FAILED',
+      'Nie udało się uruchomić modułu ChatGPT. Sprawdź instalację Node.js 22 lub nowszego i uruchom ponownie instalator modułu.'
+    );
+  return connectionError(
+    'NATIVE_HOST_DISCONNECTED',
+    'Połączenie z modułem ChatGPT zostało przerwane. Spróbuj ponownie. Jeśli błąd wraca, uruchom ponownie instalator modułu.'
+  );
+}
 function connect() {
   if (port) return port;
+  if (typeof chrome.runtime.connectNative !== 'function')
+    throw connectionError(
+      'NATIVE_API_UNAVAILABLE',
+      'Chrome nie udostępnił połączenia z modułem ChatGPT. Otwórz chrome://extensions, przeładuj OKStudy i otwórz ustawienia ponownie.'
+    );
   port = chrome.runtime.connectNative(HOST_NAME);
   port.onMessage.addListener((message) => {
     const task = pending.get(message.id);
@@ -32,13 +61,7 @@ function connect() {
     port = null;
     for (const task of pending.values()) {
       task.cleanup();
-      task.reject(
-        new Error(
-          reason
-            ? 'Moduł ChatGPT jest niedostępny. Zainstaluj go zgodnie z instrukcją w ustawieniach.'
-            : 'Połączenie z modułem ChatGPT zostało przerwane.'
-        )
-      );
+      task.reject(disconnectedError(reason));
     }
     pending.clear();
   });

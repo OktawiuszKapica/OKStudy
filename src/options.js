@@ -110,10 +110,17 @@ async function refreshAccount() {
       chatgptModels = [];
       if (settings.provider === 'openai' && settings.openaiAuth === 'chatgpt') populateModels();
     }
-  } catch {
+  } catch (error) {
     if (generation === authGeneration) {
-      $('chatgptStatus').textContent = 'Najpierw zainstaluj moduł OKStudy, a następnie połącz swoje konto.';
-      $('companionHelp').open = true;
+      $('chatgptStatus').textContent = error.message;
+      if (error.code?.startsWith('NATIVE_')) {
+        chatgptModels = [];
+        $('accountPicker').hidden = true;
+        $('signOut').hidden = true;
+        $('manageUsage').hidden = true;
+        if (settings.provider === 'openai' && settings.openaiAuth === 'chatgpt') populateModels();
+        $('companionHelp').open = error.code !== 'NATIVE_API_UNAVAILABLE';
+      }
     }
   }
 }
@@ -263,8 +270,6 @@ $('signIn').onclick = async () => {
   $('signIn').disabled = true;
   status('Otwieram logowanie ChatGPT…', false, 'authStatus');
   try {
-    const allowed = await chrome.permissions.request({ permissions: ['nativeMessaging'] });
-    if (!allowed) throw new Error('Połączenie z kontem wymaga zgody na komunikację z modułem OKStudy.');
     const account = await send('chatgpt.signin', { accountId: $('chatgptAccount').value || '__new' });
     if (!account.sharing)
       throw new Error('Konto połączone. Zaloguj się ponownie i włącz zgodę na korzystanie z planu ChatGPT.');

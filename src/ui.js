@@ -7,7 +7,10 @@ export const $ = (id) => document.getElementById(id);
 export async function send(type, data = {}) {
   const response = await chrome.runtime.sendMessage({ type, ...data });
   if (!response?.ok)
-    throw new Error(response?.error || 'Rozszerzenie zostało przeładowane. Otwórz ten ekran ponownie.');
+    throw Object.assign(
+      new Error(response?.error || 'Rozszerzenie zostało przeładowane. Otwórz ten ekran ponownie.'),
+      { code: response?.code }
+    );
   return response.data;
 }
 const paths = {
