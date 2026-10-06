@@ -1,0 +1,77 @@
+name: OKStudy
+options:
+  minimumXcodeGenVersion: 2.44.0
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: pl
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    OKSTUDY_APP_GROUP: group.pl.okstudy.mobile
+    OKSTUDY_KEYCHAIN_GROUP: $(AppIdentifierPrefix)pl.okstudy.mobile.shared
+targets:
+  OKStudy:
+    type: application
+    platform: iOS
+    sources: [App, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.okstudy.mobile
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: OKStudy
+        UILaunchScreen: {}
+        UIUserInterfaceStyle: Dark
+        OKStudyAppGroup: $(OKSTUDY_APP_GROUP)
+        OKStudyKeychainGroup: $(OKSTUDY_KEYCHAIN_GROUP)
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    entitlements:
+      path: App/OKStudy.entitlements
+      properties:
+        com.apple.security.application-groups: [$(OKSTUDY_APP_GROUP)]
+        keychain-access-groups: [$(OKSTUDY_KEYCHAIN_GROUP)]
+    dependencies:
+      - target: OKStudyShare
+    scheme:
+      testTargets: [OKStudyTests]
+  OKStudyShare:
+    type: app-extension
+    platform: iOS
+    sources: [Share, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.okstudy.mobile.share
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: Share/Info.plist
+      properties:
+        CFBundleDisplayName: OKStudy
+        OKStudyAppGroup: $(OKSTUDY_APP_GROUP)
+        OKStudyKeychainGroup: $(OKSTUDY_KEYCHAIN_GROUP)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsImageWithMaxCount: 1
+    entitlements:
+      path: Share/OKStudyShare.entitlements
+      properties:
+        com.apple.security.application-groups: [$(OKSTUDY_APP_GROUP)]
+        keychain-access-groups: [$(OKSTUDY_KEYCHAIN_GROUP)]
+  OKStudyTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: OKStudy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.okstudy.mobile.tests
+        GENERATE_INFOPLIST_FILE: YES

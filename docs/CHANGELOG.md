@@ -1,5 +1,13 @@
 # Historia wersji
 
+## Mobile 0.1.0 — osobne wydanie testowe
+
+- Android: natywna sesja MediaProjection, przesuwany przycisk jedno-/dwukrotnego stuknięcia, odpowiedź nad inną aplikacją i anulowanie bez spóźnionego wyniku. Obrót oraz systemowe zakończenie sesji.
+- Tryb samej odpowiedzi, delikatny tekst/karta, widoczność 5–80%, rozmiar, czas i miejsce. Pełny/minimalny/wyłączony komunikat analizy; krótki wykrzyknik przy błędzie.
+- Cztery API z katalogami modeli i ręcznym identyfikatorem. Szyfrowanie kluczy w Android Keystore. Polski głos systemowy i opcjonalny OpenAI Marin przez płatne API.
+- Źródła iOS/iPadOS: SwiftUI, Share Extension, akcja dla Skrótów, App Group i Keychain. Wymagają kompilacji i testów Apple; nie dostarczamy IPA/TestFlight ani nakładki nad innymi aplikacjami na iOS.
+- Narzędzia kompilacji i podpisywania Androida, testy jednostkowe i runner emulatora. Szczegółowe wyniki: [mobile/TESTING.md](../mobile/TESTING.md). Wersja mobilna wymaga klucza API; logowanie kontem ChatGPT pozostaje osobną integracją.
+
 ## 2.1.0
 
 - Forma Express: tekst, etykieta albo karta; opcjonalny automatyczny kontrast, ręczny jasny/ciemny tekst i zachowany wariant dyskretny z widocznością od 5%. Regulacja szerokości odpowiedzi.

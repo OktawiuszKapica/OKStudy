@@ -1,0 +1,15 @@
+import { readFile, mkdir } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+const paths = JSON.parse(await readFile('artifacts/mobile-tools/paths.json', 'utf8'));
+const env = { ...process.env, JAVA_HOME: paths.java, ANDROID_HOME: paths.sdk, ANDROID_SDK_ROOT: paths.sdk, GRADLE_USER_HOME: paths.gradleCache };
+const args = process.argv.slice(2);
+if (!args.every(a => /^[a-zA-Z0-9:.=_-]+$/.test(a))) throw new Error('Invalid Gradle argument');
+await mkdir('artifacts/mobile-tools', { recursive: true });
+const log = createWriteStream('artifacts/mobile-tools/build.log');
+const child = spawn('cmd.exe', ['/d', '/s', '/c', `""${paths.gradle}" -p "${resolve('mobile/android')}" --no-daemon --console=plain ${args.map(a => `"${a}"`).join(' ')}"`], { env, windowsHide: true, windowsVerbatimArguments: true, stdio: ['ignore', 'pipe', 'pipe'] });
+child.stdout.pipe(log, { end: false }); child.stderr.pipe(log, { end: false });
+child.stdout.pipe(process.stdout); child.stderr.pipe(process.stderr);
+child.on('error', error => { console.error(error); process.exitCode = 1; });
+child.on('exit', code => { log.end(); process.exitCode = code; });

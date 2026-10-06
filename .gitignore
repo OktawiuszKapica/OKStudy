@@ -4,3 +4,10 @@ releases/
 *.log
 .env*
 companion/private/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/**/build/
+mobile/private/
+mobile/ios/DerivedData/
+mobile/ios/*.xcodeproj/xcuserdata/
+mobile/ios/**/*.xcuserstate
