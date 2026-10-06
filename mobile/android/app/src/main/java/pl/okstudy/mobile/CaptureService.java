@@ -30,6 +30,7 @@ public final class CaptureService extends Service {
   private ImageReader reader;
   private WindowManager windows;
   private TextView button, answer;
+  private CropPanel cropPanel;
   private WindowManager.LayoutParams buttonPosition;
   private Prefs prefs;
   private Speech speech;
@@ -187,6 +188,8 @@ public final class CaptureService extends Service {
       display.resize(w, h, getResources().getConfiguration().densityDpi);
       display.setSurface(reader.getSurface());
     }
+    // Keep the user's projection session, but detach the producer between gestures.
+    if (capture == null) display.setSurface(null);
   }
 
   private void resize(int w, int h) {
@@ -292,6 +295,7 @@ public final class CaptureService extends Service {
               @Override
               public void onLongPress(android.view.MotionEvent event) {
                 cancel();
+                AppState.explainRequested = prefs.longPress().equals("explain");
                 startActivity(
                     new Intent(CaptureService.this, MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
@@ -354,10 +358,7 @@ public final class CaptureService extends Service {
       return;
     }
     try {
-      String provider = prefs.provider(),
-          model = prefs.model(),
-          key = new Secrets(this).get(provider);
-      ApiClient.validate(provider, key, model);
+      AiConnection connection = new AiConnection(this);
       ApiClient.Cancel token = new ApiClient.Cancel();
       active = token;
       capture = token;
@@ -369,7 +370,20 @@ public final class CaptureService extends Service {
       speech.stop();
       button.setVisibility(View.INVISIBLE);
       AppState.error = "";
-      frames.postDelayed(() -> grab(token, current, provider, key, model, prefs.only()), 220);
+      boolean only = prefs.only();
+      frames.post(
+          () -> {
+            if (ending || capture != token || token.cancelled) return;
+            try {
+              try (Image stale = reader.acquireLatestImage()) {
+                if (stale != null) captureBaseline = stale.getTimestamp();
+              }
+              display.setSurface(reader.getSurface());
+              frames.postDelayed(() -> grab(token, current, connection, only), 220);
+            } catch (Exception e) {
+              main.post(() -> fail(token, e));
+            }
+          });
       main.postDelayed(
           () -> {
             if (active == token && !ending && capture == token) {
@@ -387,18 +401,12 @@ public final class CaptureService extends Service {
     }
   }
 
-  private void grab(
-      ApiClient.Cancel token,
-      int current,
-      String provider,
-      String key,
-      String model,
-      boolean only) {
+  private void grab(ApiClient.Cancel token, int current, AiConnection connection, boolean only) {
     if (ending || capture != token || token.cancelled) return;
     try (Image image = reader.acquireLatestImage()) {
       if (image == null || image.getTimestamp() <= captureBaseline) {
         if (SystemClock.elapsedRealtime() - captureStarted < 3000) {
-          frames.postDelayed(() -> grab(token, current, provider, key, model, only), 80);
+          frames.postDelayed(() -> grab(token, current, connection, only), 80);
           return;
         }
         throw new Exception("Nie udało się pobrać świeżego zrzutu. Spróbuj ponownie.");
@@ -408,33 +416,11 @@ public final class CaptureService extends Service {
       String jpeg = ImageCodec.fromFrame(image);
       token.check();
       capture = null;
+      if (display != null) display.setSurface(null);
       main.post(
           () -> {
             if (active == token && !ending) {
-              button.setVisibility(View.VISIBLE);
-              working();
-            }
-          });
-      network.execute(
-          () -> {
-            try {
-              String text = new ApiClient().analyze(provider, key, model, jpeg, only, token);
-              main.post(
-                  () -> {
-                    if (ending || active != token || token.cancelled || current != generation)
-                      return;
-                    active = null;
-                    resetButton();
-                    AppState.answer = text;
-                    AppState.error = "";
-                    if (!prefs.voice().equals("only")) showAnswer(text, false);
-                    if (!prefs.voice().equals("off")) speech.read(text, e -> fail(null, e));
-                  });
-            } catch (Exception error) {
-              main.post(
-                  () -> {
-                    if (active == token && !token.cancelled) fail(token, error);
-                  });
+              prepareTask(token, current, connection, jpeg, only);
             }
           });
     } catch (Exception error) {
@@ -443,6 +429,99 @@ public final class CaptureService extends Service {
             if (active == token && !token.cancelled) fail(token, error);
           });
     }
+  }
+
+  private void prepareTask(
+      ApiClient.Cancel token, int current, AiConnection connection, String jpeg, boolean only) {
+    RectF saved = CropPanel.saved(prefs, jpeg);
+    if (prefs.cropMode().equals("full")) {
+      sendTask(token, current, connection, jpeg, null, only);
+      return;
+    }
+    if (prefs.cropMode().equals("saved") && saved != null) {
+      sendTask(token, current, connection, jpeg, saved, only);
+      return;
+    }
+    try {
+      cropPanel =
+          new CropPanel(
+              this,
+              jpeg,
+              saved,
+              selected -> {
+                if (selected.remember()) CropPanel.save(prefs, jpeg, selected.bounds());
+                removeCrop();
+                sendTask(token, current, connection, jpeg, selected.bounds(), only);
+              },
+              this::cancel,
+              true);
+      WindowManager.LayoutParams layout = overlay(-1, -1, true);
+      layout.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+      layout.gravity = Gravity.TOP | Gravity.LEFT;
+      windows.addView(cropPanel, layout);
+      cropPanel.requestFocus();
+    } catch (Exception e) {
+      fail(token, e);
+    }
+  }
+
+  private void sendTask(
+      ApiClient.Cancel token,
+      int current,
+      AiConnection connection,
+      String jpeg,
+      RectF crop,
+      boolean only) {
+    if (ending || active != token || token.cancelled) return;
+    button.setVisibility(View.VISIBLE);
+    working();
+    network.execute(
+        () -> {
+          try {
+            String selected = crop == null ? jpeg : CropPanel.crop(jpeg, crop);
+            token.check();
+            String text = connection.analyze(selected, only, token);
+            main.post(
+                () -> {
+                  if (ending || active != token || token.cancelled || current != generation) return;
+                  active = null;
+                  resetButton();
+                  AppState.answer = text;
+                  AppState.error = "";
+                  AppState.remember(selected, connection);
+                  if (!prefs.voice().equals("only")) showAnswer(text, false);
+                  if (!prefs.voice().equals("off")) speech.read(text, e -> fail(null, e));
+                });
+          } catch (Exception error) {
+            main.post(
+                () -> {
+                  if (active == token && !token.cancelled) fail(token, error);
+                });
+          }
+        });
+  }
+
+  private void removeCrop() {
+    if (cropPanel != null) {
+      try {
+        windows.removeView(cropPanel);
+      } catch (IllegalArgumentException ignored) {
+      }
+      cropPanel.dispose();
+      cropPanel = null;
+    }
+  }
+
+  private void pauseFrames() {
+    frames.post(
+        () -> {
+          if (!ending && display != null && capture == null) {
+            try {
+              display.setSurface(null);
+            } catch (Exception ignored) {
+            }
+          }
+        });
   }
 
   private void working() {
@@ -508,6 +587,21 @@ public final class CaptureService extends Service {
         (prefs.position().equals("top") ? Gravity.TOP : Gravity.BOTTOM) | Gravity.RIGHT;
     layout.x = dp(16);
     layout.y = dp(prefs.position().equals("top") ? 75 : 90);
+    if (prefs.position().equals("custom")) {
+      answer.measure(
+          View.MeasureSpec.makeMeasureSpec(size.x - dp(32), View.MeasureSpec.AT_MOST),
+          View.MeasureSpec.makeMeasureSpec(
+              Math.max(dp(100), size.y - dp(130)), View.MeasureSpec.AT_MOST));
+      layout.gravity = Gravity.TOP | Gravity.LEFT;
+      layout.x =
+          dp(16)
+              + Math.round(
+                  prefs.answerX() * Math.max(0, size.x - dp(32) - answer.getMeasuredWidth()));
+      layout.y =
+          dp(48)
+              + Math.round(
+                  prefs.answerY() * Math.max(0, size.y - dp(130) - answer.getMeasuredHeight()));
+    }
     layout.alpha = progress ? .8f : prefs.opacity();
     if (Build.VERSION.SDK_INT >= 31) {
       float max =
@@ -536,6 +630,8 @@ public final class CaptureService extends Service {
     if (active != null) active.cancel();
     active = null;
     capture = null;
+    removeCrop();
+    pauseFrames();
     resetButton();
     if (button != null) {
       button.setText("!");
@@ -551,6 +647,10 @@ public final class CaptureService extends Service {
   }
 
   private static String message(Exception error) {
+    if (error instanceof org.json.JSONException
+        || error instanceof java.security.GeneralSecurityException)
+      return "Nie udało się odczytać poprawnej odpowiedzi AI. Spróbuj ponownie lub zaloguj konto"
+                 + " jeszcze raz.";
     return error instanceof java.net.SocketTimeoutException
         ? "Analiza trwała za długo. Spróbuj ponownie."
         : error.getMessage() == null
@@ -563,6 +663,8 @@ public final class CaptureService extends Service {
     if (active != null) active.cancel();
     active = null;
     capture = null;
+    removeCrop();
+    pauseFrames();
     generation++;
     speech.stop();
     removeAnswer();
@@ -573,6 +675,8 @@ public final class CaptureService extends Service {
   public void onDestroy() {
     ending = true;
     AppState.active = false;
+    AppState.clearTask();
+    removeCrop();
     if (active != null) active.cancel();
     capture = null;
     main.removeCallbacksAndMessages(null);

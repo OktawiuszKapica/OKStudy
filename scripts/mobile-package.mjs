@@ -20,12 +20,16 @@ if (!await exists(keystore)) {
     '-validity', '10000', '-dname', 'CN=OKStudy Mobile, O=OKStudy, C=PL'], { env, windowsHide: true, stdio: 'inherit' });
 }
 if (!await exists(password)) throw new Error('Signing password missing; preserve and restore the original mobile/private files.');
-const output = resolve('releases/OKStudy-Mobile-0.1.0.apk');
+const source = await readFile('mobile/android/app/build.gradle', 'utf8');
+const version = source.match(/versionName\s+'(\d+\.\d+\.\d+)'/)?.[1];
+if (!version) throw new Error('Missing valid Android versionName');
+const filename = `OKStudy-Mobile-${version}.apk`;
+const output = resolve('releases', filename);
 const signerJar = join(paths.sdk, 'build-tools/36.0.0/lib/apksigner.jar');
 execFileSync(join(paths.java, 'bin/java.exe'), ['-jar', signerJar, 'sign', '--ks', keystore, '--ks-key-alias', 'okstudy-mobile',
   '--ks-pass', `file:${password}`, '--out', output,
   resolve('mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk')], { env, windowsHide: true, stdio: 'inherit' });
 execFileSync(join(paths.java, 'bin/java.exe'), ['-jar', signerJar, 'verify', '--verbose', '--print-certs', output], { env, windowsHide: true, stdio: 'inherit' });
 const bytes = await readFile(output), sha256 = createHash('sha256').update(bytes).digest('hex');
-await writeFile('releases/OKStudy-Mobile-0.1.0.apk.sha256', `${sha256}  OKStudy-Mobile-0.1.0.apk\n`);
+await writeFile(`releases/${filename}.sha256`, `${sha256}  ${filename}\n`);
 console.log(`Signed APK: ${output} (${bytes.length} bytes); SHA256 ${sha256}`);

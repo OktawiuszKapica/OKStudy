@@ -1,13 +1,13 @@
 # OKStudy na telefonie i tablecie
 
-Stan: natywna implementacja mobilna 0.1.0, 6 października 2026, oddzielna od rozszerzenia 2.1.0. Android ma projekt aplikacji z nakładką; iPhone/iPad — źródła SwiftUI, Share Extension i App Intent. Instrukcja: [mobile/README.md](../mobile/README.md), weryfikacja: [mobile/TESTING.md](../mobile/TESTING.md). Źródła Apple nie zostały skompilowane na tej maszynie Windows; nie ma IPA ani TestFlight.
+Stan: Android 0.2.0 i źródła Apple 0.1.0, 6 października 2026, oddzielnie od rozszerzenia 2.1.0. Android ma nakładkę, logowanie ChatGPT, edytor kadru, profile i nowy wygląd. Na prośbę użytkownika 0.2.0 nie uruchamiano w emulatorze ani na telefonie; testy wykona on osobiście. Instrukcja: [mobile/README.md](../mobile/README.md), weryfikacja: [mobile/TESTING.md](../mobile/TESTING.md), [plan testów telefonu](../mobile/PHONE-TESTS.md). Źródła Apple nie zostały skompilowane na tej maszynie Windows; nie ma IPA ani TestFlight.
 
 ## Obsługa
 
 1. Użytkownik wybiera model, sposób odpowiedzi i uruchamia sesję pomocy.
 2. Mały znacznik przy krawędzi uruchamia analizę po jednym lub dwóch stuknięciach. Można go przesunąć. Gest jest przypisany do znacznika, żeby zwykłe dotykanie pozostałej części ekranu nadal obsługiwało otwartą aplikację.
-3. Dopiero ten gest wysyła bieżący obraz do wybranego dostawcy. Aplikacja nie prowadzi ciągłej analizy AI. Znacznik i poprzednia odpowiedź są ukrywane na czas pobrania klatki.
-4. Odpowiedź: samo `D`, `Dynamika Techniczna` albo krótkie wyjaśnienie. Android: delikatny tekst/karta lub głos, widoczność 5–80%, wielkość 12–26 sp i czas 3–30 s. Przełącznik wyjaśnienia jest w ustawieniach; nie zasłania ekranu obok odpowiedzi.
+3. Gest pobiera świeży obraz, ukrywając znacznik i poprzednią odpowiedź. Domyślnie otwiera edytor; obraz trafia do AI po zatwierdzeniu kadru. Można wybrać cały ekran lub zapisany obszar, osobny dla pionu i poziomu. Między gestami powierzchnia VirtualDisplay jest odłączona, bez kończenia systemowej sesji. Nie zmierzono zużycia baterii na telefonie.
+4. Odpowiedź: samo `D`, `Dynamika Techniczna` albo krótkie wyjaśnienie. Android: delikatny tekst/karta lub głos, widoczność 5–80%, wielkość 12–26 sp i czas 3–30 s. Profile oraz podgląd z przeciąganiem ustalają wygląd i pozycję. Opcjonalne przytrzymanie OK prosi o wyjaśnienie ostatniego kadru w aplikacji; przy wyniku nie pojawia się dodatkowy napis.
 5. Przerwanie zatrzymuje bieżące zapytanie; zakończenie sesji zwalnia przechwytywanie obrazu i usuwa nakładkę.
 
 ## Android
@@ -16,7 +16,7 @@ Implementacja w `mobile/android/`: `MediaProjection`, usługa pierwszoplanowa ty
 
 Przycisk otrzymuje mały obszar dotyku, a okno odpowiedzi ma przepuszczać dotknięcia zgodnie z ograniczeniami systemu. Nie należy stosować pełnoekranowej niewidocznej warstwy przechwytującej gesty. Część aplikacji może chronić swój obraz; brak dostępnego obrazu trzeba pokazać jako błąd, bez wysyłania poprzedniej klatki. [Okna i flagi Androida](https://developer.android.com/reference/android/view/WindowManager.LayoutParams)
 
-Klucze są szyfrowane przez Android Keystore. Obrazy pozostają w pamięci na czas zadania. Automatyczne testy obejmują przetwarzanie odpowiedzi, katalogi i anulowanie; szczegółowe wyniki znajdują się w raporcie powyżej. Na telefonie docelowym pozostają do sprawdzenia: blokada, nakładki producenta, dłuższa sesja, prawdziwe modele i głos oraz bateria.
+Klucze i tokeny są szyfrowane przez Android Keystore. Ostatni kadr jest dostępny do wyjaśnienia przez 5 minut w pamięci, z wcześniejszym usuwaniem po wyczyszczeniu, zmianie połączenia lub zakończeniu sesji. Wyniki dawnych testów 0.1.0 nie potwierdzają wydania 0.2.0. Na telefonie pozostają do sprawdzenia logowanie i odnawianie konta, kadrowanie, gesty, nowy interfejs, blokada, nakładki producenta, prawdziwe modele, głos oraz bateria.
 
 ## iPhone i iPad
 
@@ -28,6 +28,6 @@ Projekt `mobile/ios/` dla iOS/iPadOS 17+ zawiera wybór zrzutu ze Zdjęć, arkus
 
 ## Połączenia i modele
 
-Wspólne z rozszerzeniem pozostają format krótkiej odpowiedzi i reguły katalogu modeli. Adaptery przechwytywania, okien, głosu i magazynu poświadczeń są zależne od platformy. **Mobilne 0.1.0 wymaga własnego klucza API. Nie ma jeszcze logowania abonamentem ChatGPT na telefonie.** Moduł Windows Native Messaging nie jest przenoszony do telefonu; potrzebna jest osobna integracja mobilna. Aplikacja nie przełącza abonamentu na płatne API bez wiedzy użytkownika.
+Android 0.2.0 zawiera osobną natywną integrację Sign in with ChatGPT (PKCE, lokalny callback, OIDC/JWKS, magazyn Keystore, odnawianie i wylogowanie) oraz dotychczasowe cztery API. Nie wymaga modułu Windows. Wybór modelu planu jest osobny dla każdej rejestracji konta. Dostęp zależy od konta i zgody na użycie planu; integracja nie została jeszcze sprawdzona z prawdziwym kontem. Limity nie uruchamiają płatnego API jako zastępstwa. Źródła Apple 0.1.0 nadal wymagają klucza API. [Oficjalna dokumentacja OpenAI](https://developers.openai.com/siwc/token-sharing-open-source).
 
 Nowe nazwy modeli pobiera katalog konta. Zmiana protokołu zapytań nadal może wymagać aktualizacji aplikacji; wycofanego modelu nie zastępujemy samodzielnie innym płatnym modelem.

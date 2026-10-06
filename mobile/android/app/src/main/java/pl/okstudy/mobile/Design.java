@@ -49,13 +49,38 @@ final class Design {
     view.setAllCaps(false);
     view.setTextSize(15);
     view.setTextColor(primary ? BG : TEXT);
-    view.setBackground(shape(c, primary ? LIME : CARD, 15));
+    view.setBackground(
+        new android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(primary ? 0x33000000 : 0x33BCF35A),
+            shape(c, primary ? LIME : CARD, 18),
+            null));
     view.setPadding(dp(c, 16), dp(c, 9), dp(c, 16), dp(c, 9));
     view.setMinHeight(dp(c, 52));
     LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
     p.topMargin = dp(c, 10);
     view.setLayoutParams(p);
     return view;
+  }
+
+  static void art(Context c, LinearLayout parent, int resource, int height) {
+    ImageView image = new ImageView(c);
+    image.setImageResource(resource);
+    image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+    image.setBackground(shape(c, BG, 24));
+    image.setClipToOutline(true);
+    image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+    LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(c, height));
+    p.topMargin = dp(c, 18);
+    p.bottomMargin = dp(c, 12);
+    parent.addView(image, p);
+  }
+
+  static TextView chip(Context c, String label) {
+    TextView v = text(c, label, 10, LIME, true);
+    v.setLetterSpacing(.08f);
+    v.setPadding(dp(c, 12), dp(c, 7), dp(c, 12), dp(c, 7));
+    v.setBackground(shape(c, CARD, 18));
+    return v;
   }
 
   static LinearLayout card(Context c, LinearLayout parent, String title, String subtitle) {

@@ -1,5 +1,14 @@
 # Historia wersji
 
+## Android 0.2.0 — konto ChatGPT, kadr i nowy wygląd
+
+- Natywny Sign in with ChatGPT: przeglądarka, PKCE/state/nonce, walidacja podpisu/tożsamości, szyfrowane połączenia wielu kont, odnawianie sesji i wylogowanie. Modele per konto, zarządzanie użyciem, Responses SSE kończone potwierdzeniem `response.completed`; bez przełączania na API po limicie.
+- Edytor kadru przed analizą, kadr zapamiętany osobno dla pionu/poziomu lub cały ekran. Obraz udostępniony z galerii również można wykadrować.
+- Zakładki Start/Połączenia/Wygląd, dwie grafiki ImageGen, profile Dyskretny/Czytelny/Nauka/Głos i podgląd z przeciąganiem odpowiedzi. Gest wyjaśnienia korzysta z ostatniego kadru trzymanego w pamięci przez maksymalnie 5 minut dostępności.
+- Odłączanie powierzchni MediaProjection pomiędzy gestami; osobne pole klucza OpenAI do głosu. Sprawdzanie nowszych APK w publicznych wydaniach GitHub, bez automatycznej instalacji.
+- VersionCode 2, zachowany klucz podpisu i ustawienia poprzedniej instalacji. Kompilacja release i lint; na prośbę użytkownika bez testów emulatora/telefonu oraz bez logowania na rzeczywiste konto. Plan kontroli: [PHONE-TESTS.md](../mobile/PHONE-TESTS.md).
+- Wydanie dotyczy Androida; źródła iOS pozostają na etapie 0.1.0. W tym zadaniu nie publikowano APK w GitHub ani sklepie.
+
 ## Mobile 0.1.0 — osobne wydanie testowe
 
 - Android: natywna sesja MediaProjection, przesuwany przycisk jedno-/dwukrotnego stuknięcia, odpowiedź nad inną aplikacją i anulowanie bez spóźnionego wyniku. Obrót oraz systemowe zakończenie sesji.

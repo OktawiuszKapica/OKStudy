@@ -16,7 +16,11 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public final class MainActivity extends Activity {
-  private static final int OVERLAY = 10, CAPTURE = 11, IMAGE = 12, NOTIFICATION = 13;
+  private static final int OVERLAY = 10, CAPTURE = 11, IMAGE = 12, NOTIFICATION = 13, CHATGPT = 14;
+  private static final String[] PROVIDERS = {"chatgpt", "gemini", "claude", "openai", "grok"};
+  private static final String[] PROVIDER_NAMES = {
+    "ChatGPT — Twój plan", "Gemini — API", "Claude — API", "OpenAI — API", "Grok — API"
+  };
   private Prefs prefs;
   private Secrets secrets;
   private EditText keyField, modelField;
@@ -28,6 +32,16 @@ public final class MainActivity extends Activity {
   private boolean pendingStart, alive;
   private String image, displayedAnswer = "", displayedError = "";
   private Speech speech;
+  private int selectedTab;
+  private int imageVersion;
+  private LinearLayout[] pages;
+  private Button[] tabs;
+  private ScrollView scroll;
+  private LinearLayout accountBox, apiBox;
+  private AnswerPreview preview;
+  private Spinner positionPicker;
+  private SeekBar positionX, positionY;
+  private TextView positionXValue, positionYValue;
   private final Runnable refresh =
       new Runnable() {
         public void run() {
@@ -46,35 +60,45 @@ public final class MainActivity extends Activity {
     secrets = new Secrets(this);
     speech = new Speech(this);
     pendingStart = state != null && state.getBoolean("pendingStart");
+    selectedTab = state == null ? 0 : Math.max(0, Math.min(2, state.getInt("tab", 0)));
     build();
     accept(getIntent());
   }
 
   private void build() {
-    ScrollView scroll = new ScrollView(this);
+    LinearLayout root = Design.column(this);
+    root.setBackgroundColor(Design.BG);
+    scroll = new ScrollView(this);
     scroll.setFillViewport(true);
     scroll.setBackgroundColor(Design.BG);
     LinearLayout page = Design.column(this);
     page.setPadding(dp(22), dp(18), dp(22), dp(34));
     scroll.addView(page);
-    scroll.setOnApplyWindowInsetsListener(
+    root.setOnApplyWindowInsetsListener(
         (v, insets) -> {
           v.setPadding(0, insets.getSystemWindowInsetTop(), 0, insets.getSystemWindowInsetBottom());
           return insets;
         });
-    setContentView(scroll);
+    root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+    setContentView(root);
     LinearLayout logo = new LinearLayout(this);
     logo.setGravity(Gravity.CENTER_VERTICAL);
     logo.addView(new Design.Mark(this), new LinearLayout.LayoutParams(dp(45), dp(35)));
     TextView name = Design.text(this, "  OKStudy", 25, Design.TEXT, true);
-    logo.addView(name);
+    logo.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+    logo.addView(Design.chip(this, "MOBILE / 02"));
     page.addView(logo);
+    LinearLayout home = Design.column(this),
+        aiPage = Design.column(this),
+        stylePage = Design.column(this);
+    pages = new LinearLayout[] {home, aiPage, stylePage};
+    for (LinearLayout section : pages) page.addView(section);
+    Design.art(this, home, R.drawable.focus_hero, 178);
     TextView eyebrow = Design.text(this, "TWOJA POMOC W NAUCE · MOBILE", 10, Design.LIME, true);
     eyebrow.setLetterSpacing(.12f);
-    eyebrow.setPadding(0, dp(28), 0, dp(10));
-    page.addView(eyebrow);
-    page.addView(
-        Design.text(this, "Zadanie na ekranie.\nOdpowiedź pod ręką.", 31, Design.TEXT, true));
+    eyebrow.setPadding(0, dp(7), 0, dp(10));
+    home.addView(eyebrow);
+    home.addView(Design.text(this, "Twój mały skrót\ndo zrozumienia.", 29, Design.TEXT, true));
     TextView intro =
         Design.text(
             this,
@@ -83,9 +107,9 @@ public final class MainActivity extends Activity {
             Design.MUTED,
             false);
     intro.setPadding(0, dp(12), 0, dp(12));
-    page.addView(intro);
+    home.addView(intro);
     sessionState = Design.text(this, "", 12, Design.MUTED, false);
-    page.addView(sessionState);
+    home.addView(sessionState);
     start = Design.button(this, "Uruchom pomoc na ekranie", true);
     start.setOnClickListener(
         v -> {
@@ -93,7 +117,7 @@ public final class MainActivity extends Activity {
             startService(new Intent(this, CaptureService.class).setAction(CaptureService.STOP));
           } else begin();
         });
-    page.addView(start);
+    home.addView(start);
     Button pick = Design.button(this, "Wybierz lub udostępnij zrzut", false);
     pick.setOnClickListener(
         v -> {
@@ -103,7 +127,7 @@ public final class MainActivity extends Activity {
                   .addCategory(Intent.CATEGORY_OPENABLE);
           startActivityForResult(intent, IMAGE);
         });
-    page.addView(pick);
+    home.addView(pick);
     status =
         Design.text(
             this,
@@ -112,39 +136,62 @@ public final class MainActivity extends Activity {
             12,
             Design.MUTED,
             false);
-    status.setPadding(0, dp(12), 0, 0);
+    status.setPadding(dp(22), dp(9), dp(22), dp(9));
+    status.setMaxLines(4);
     status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-    page.addView(status);
+    root.addView(status);
     analyzeImage = Design.button(this, "Analizuj wybrany zrzut", true);
     analyzeImage.setVisibility(View.GONE);
     analyzeImage.setOnClickListener(v -> analyzeShared());
-    page.addView(analyzeImage);
+    home.addView(analyzeImage);
+    aiPage.addView(Design.text(this, "Twoje AI.\nTwój wybór.", 30, Design.TEXT, true));
     LinearLayout connection =
         Design.card(
             this,
-            page,
-            "01  Twoje AI",
-            "Własny klucz API. Użycie jest rozliczane przez dostawcę, poza abonamentem ChatGPT.");
+            aiPage,
+            "Połączenie",
+            "Korzystaj ze swojego planu ChatGPT albo wybierz własny klucz API.");
     label(connection, "Dostawca");
-    Spinner provider = spinner(connection, ApiClient.NAMES);
-    label(connection, "Klucz API");
-    keyField = edit(connection, "Wklej klucz", true);
+    Spinner provider = spinner(connection, PROVIDER_NAMES);
+    accountBox = Design.column(this);
+    connection.addView(accountBox);
+    apiBox = Design.column(this);
+    connection.addView(apiBox);
+    label(apiBox, "Klucz API");
+    keyField = edit(apiBox, "Wklej klucz", true);
+    apiBox.addView(
+        Design.text(this, "API jest rozliczane osobno przez dostawcę.", 12, Design.MUTED, false));
+    Button remove = Design.button(this, "Usuń klucz tego dostawcy", false);
+    remove.setOnClickListener(
+        v -> {
+          try {
+            secrets.put(prefs.provider(), "");
+            keyField.setText("");
+            keyHint();
+            show("Usunięto klucz.", false);
+          } catch (Exception e) {
+            error(e);
+          }
+        });
+    apiBox.addView(remove);
     label(connection, "Model");
     modelField = edit(connection, "Pobierz listę lub wpisz identyfikator", false);
     modelField.setText(prefs.model());
     keyHint();
-    provider.setSelection(Arrays.asList(ApiClient.PROVIDERS).indexOf(prefs.provider()));
+    provider.setSelection(Math.max(0, Arrays.asList(PROVIDERS).indexOf(prefs.provider())));
     provider.setOnItemSelectedListener(
         new AdapterView.OnItemSelectedListener() {
           public void onNothingSelected(AdapterView<?> p) {}
 
           public void onItemSelected(AdapterView<?> p, View view, int i, long id) {
-            if (prefs.provider().equals(ApiClient.PROVIDERS[i])) return;
+            if (prefs.provider().equals(PROVIDERS[i])) return;
             if (catalogRequest != null) catalogRequest.cancel();
-            prefs.store.edit().putString("provider", ApiClient.PROVIDERS[i]).apply();
+            cancelRequests();
+            prefs.store.edit().putString("provider", PROVIDERS[i]).apply();
             keyField.setText("");
             modelField.setText(prefs.model());
             keyHint();
+            refreshAccount();
             catalog.setEnabled(true);
           }
         });
@@ -162,28 +209,95 @@ public final class MainActivity extends Activity {
           }
         });
     connection.addView(save);
-    Button remove = Design.button(this, "Usuń klucz tego dostawcy", false);
-    remove.setOnClickListener(
-        v -> {
-          try {
-            secrets.put(prefs.provider(), "");
-            keyField.setText("");
-            keyHint();
-            show("Usunięto klucz tego dostawcy.", false);
-          } catch (Exception e) {
-            error(e);
-          }
-        });
-    connection.addView(remove);
+    refreshAccount();
+    Design.art(this, stylePage, R.drawable.answer_modes, 144);
+    stylePage.addView(Design.text(this, "Odpowiedź\nw Twoim stylu.", 29, Design.TEXT, true));
+    LinearLayout profiles =
+        Design.card(
+            this,
+            stylePage,
+            "Jeden dotyk. Twój profil.",
+            "Każdy profil możesz dopasować suwakami poniżej.");
+    String[] ids = {"discreet", "readable", "study", "voice"};
+    String[] names = {
+      "Dyskretny\nDelikatny tekst",
+      "Czytelny\nWyraźna karta",
+      "Nauka\nKrótkie kroki",
+      "Głos\nOdczyt systemowy"
+    };
+    LinearLayout profileRow = null;
+    for (int i = 0; i < ids.length; i++) {
+      if (i % 2 == 0) {
+        profileRow = new LinearLayout(this);
+        profiles.addView(profileRow);
+      }
+      final String id = ids[i];
+      Button p = Design.button(this, names[i], id.equals(prefs.store.getString("profile", "")));
+      p.setTextSize(13);
+      p.setOnClickListener(
+          v -> {
+            prefs.profile(id);
+            selectedTab = 2;
+            rebuildPreservingDrafts();
+            show("Profil zastosowany. Możesz go dopasować poniżej.", false);
+          });
+      LinearLayout.LayoutParams cell = new LinearLayout.LayoutParams(0, dp(82), 1);
+      cell.setMargins(i % 2 == 0 ? 0 : dp(5), dp(10), i % 2 == 0 ? dp(5) : 0, 0);
+      profileRow.addView(p, cell);
+    }
     LinearLayout presentation =
         Design.card(
             this,
-            page,
-            "02  Tak, jak lubisz",
-            "Przytrzymaj przycisk OKStudy, żeby wrócić tutaj. Przeciągnij go, żeby zmienić"
-                + " miejsce.");
+            stylePage,
+            "Gesty i kadr",
+            "Przeciągnij przycisk OK, żeby zmienić jego miejsce na ekranie.");
+    choose(
+        presentation,
+        "Obraz wysyłany do AI",
+        "cropMode",
+        new String[] {"ask", "saved", "full"},
+        new String[] {
+          "Wybieram fragment przed analizą", "Używam zapamiętanego kadru", "Cały przechwycony ekran"
+        },
+        "ask");
+    Button clearCrop = Design.button(this, "Wyczyść zapamiętane kadry", false);
+    clearCrop.setOnClickListener(
+        v -> {
+          var editor = prefs.store.edit();
+          for (String key : prefs.store.getAll().keySet())
+            if (key.startsWith("crop.")) editor.remove(key);
+          editor.putString("cropMode", "ask").apply();
+          selectedTab = 2;
+          rebuildPreservingDrafts();
+          show("Kadry wyczyszczone. Wybierz fragment przy kolejnym zadaniu.", false);
+        });
+    presentation.addView(clearCrop);
+    choose(
+        presentation,
+        "Przytrzymanie przycisku OK",
+        "longPress",
+        new String[] {"settings", "explain"},
+        new String[] {"Otwórz aplikację", "Wyjaśnij ostatnią odpowiedź"},
+        "settings");
+    presentation.addView(
+        Design.text(
+            this,
+            "Wyjaśnienie korzysta z ostatniego kadru, przechowywanego do 5 minut w pamięci. To"
+                + " dodatkowe zapytanie do wybranego AI.",
+            12,
+            Design.MUTED,
+            false));
     toggle(presentation, "Tylko odpowiedź: D albo samo hasło", "answerOnly", true);
     toggle(presentation, "Uruchamiaj podwójnym stuknięciem", "doubleTap", true);
+    presentation =
+        Design.card(
+            this,
+            stylePage,
+            "Tak wygląda Twój wynik",
+            "Przeciągnij przykładowe D w podglądzie. Na prawdziwym ekranie odpowiedź przepuszcza"
+                + " dotyk.");
+    preview = new AnswerPreview(this);
+    presentation.addView(preview, new LinearLayout.LayoutParams(-1, dp(210)));
     choose(
         presentation,
         "Wygląd odpowiedzi",
@@ -202,9 +316,27 @@ public final class MainActivity extends Activity {
         presentation,
         "Miejsce odpowiedzi",
         "position",
-        new String[] {"bottom", "top"},
-        new String[] {"Na dole ekranu", "U góry ekranu"},
+        new String[] {"bottom", "top", "custom"},
+        new String[] {"Na dole ekranu", "U góry ekranu", "Moje miejsce z podglądu"},
         "bottom");
+    slider(
+        presentation,
+        "Położenie poziome",
+        "answerX",
+        0,
+        100,
+        Math.round(prefs.answerX() * 100),
+        "%",
+        true);
+    slider(
+        presentation,
+        "Położenie pionowe",
+        "answerY",
+        0,
+        100,
+        Math.round(prefs.answerY() * 100),
+        "%",
+        true);
     slider(
         presentation, "Widoczność", "opacity", 5, 80, Math.round(prefs.opacity() * 100), "%", true);
     slider(presentation, "Wielkość tekstu", "textSize", 12, 26, prefs.textSize(), " sp", false);
@@ -221,8 +353,8 @@ public final class MainActivity extends Activity {
     LinearLayout audio =
         Design.card(
             this,
-            page,
-            "03  Głos",
+            stylePage,
+            "Głos",
             "Możesz czytać odpowiedź, słuchać jej albo połączyć oba sposoby.");
     choose(
         audio,
@@ -241,11 +373,34 @@ public final class MainActivity extends Activity {
     audio.addView(
         Design.text(
             this,
-            "Głos OpenAI wymaga klucza OpenAI zapisanego wyżej. Tekst jest wysyłany do OpenAI."
+            "Głos OpenAI wymaga osobnego klucza API poniżej. Tekst jest wysyłany do OpenAI."
                 + " Odczyt generuje AI; nowe nagrania są osobno płatne.",
             12,
             Design.MUTED,
             false));
+    label(audio, "Klucz OpenAI do głosu (nie zmienia dostawcy zadań)");
+    EditText speechKey =
+        edit(
+            audio,
+            secrets.has("openai") ? "Klucz OpenAI już zapisany" : "Wklej klucz API OpenAI",
+            true);
+    Button saveSpeechKey = Design.button(this, "Zapisz klucz głosu", false);
+    saveSpeechKey.setOnClickListener(
+        v -> {
+          try {
+            String value = speechKey.getText().toString().trim();
+            if (value.isEmpty())
+              throw new Exception("Wpisz klucz OpenAI albo pozostaw głos systemowy.");
+            secrets.put("openai", value);
+            speechKey.setText("");
+            speechKey.setHint("Klucz OpenAI już zapisany");
+            keyHint();
+            show("Klucz głosu zapisany. Odczyt OpenAI korzysta z osobno płatnego API.", false);
+          } catch (Exception e) {
+            error(e);
+          }
+        });
+    audio.addView(saveSpeechKey);
     slider(
         audio,
         "Dzienny limit nowych nagrań (0 = bez limitu)",
@@ -258,10 +413,10 @@ public final class MainActivity extends Activity {
     LinearLayout result =
         Design.card(
             this,
-            page,
+            home,
             "Ostatnia odpowiedź",
-            "Odpowiedź pozostaje tylko w bieżącej sesji aplikacji. Zrzut nie jest zapisywany w"
-                + " galerii.");
+            "Ostatni kadr pozostaje w pamięci do 5 minut, aby można było poprosić o wyjaśnienie."
+                + " Wyczyść usuwa go od razu.");
     answer = Design.text(this, "Tutaj pojawi się wynik analizy.", 17, Design.TEXT, false);
     answer.setTextIsSelectable(true);
     result.addView(answer);
@@ -282,11 +437,15 @@ public final class MainActivity extends Activity {
           else if (!AppState.answer.isEmpty()) speech.read(AppState.answer, this::error);
         });
     result.addView(read);
+    Button explain = Design.button(this, "Wyjaśnij w aplikacji", false);
+    explain.setOnClickListener(v -> explainLast());
+    result.addView(explain);
     Button clear = Design.button(this, "Wyczyść odpowiedź", false);
     clear.setOnClickListener(
         v -> {
           AppState.answer = "";
           AppState.error = "";
+          AppState.clearTask();
           answer.setText("Tutaj pojawi się wynik analizy.");
           displayedAnswer = "";
           speech.stop();
@@ -295,12 +454,237 @@ public final class MainActivity extends Activity {
     TextView foot =
         Design.text(
             this,
-            "OKStudy Mobile 0.1.0 · wersja testowa\nOktawiusz Kapica",
+            "OKStudy Mobile " + BuildConfig.VERSION_NAME + " · wersja testowa\nOktawiusz Kapica",
             11,
             Design.MUTED,
             false);
     foot.setPadding(0, dp(24), 0, 0);
     page.addView(foot);
+    Button update = Design.button(this, "Sprawdź aktualizacje", false);
+    update.setOnClickListener(v -> checkUpdates(update));
+    aiPage.addView(update);
+    LinearLayout nav = new LinearLayout(this);
+    nav.setPadding(dp(12), dp(6), dp(12), dp(8));
+    tabs = new Button[3];
+    String[] labels = {"Start", "Połączenia", "Wygląd"};
+    for (int i = 0; i < 3; i++) {
+      final int tab = i;
+      tabs[i] = Design.button(this, labels[i], false);
+      tabs[i].setTextSize(13);
+      tabs[i].setOnClickListener(v -> showTab(tab));
+      nav.addView(tabs[i], new LinearLayout.LayoutParams(0, dp(50), 1));
+    }
+    root.addView(nav);
+    showTab(selectedTab);
+    displayedAnswer = "";
+    refreshState();
+  }
+
+  private void showTab(int tab) {
+    selectedTab = tab;
+    for (int i = 0; i < pages.length; i++) {
+      pages[i].setVisibility(i == tab ? View.VISIBLE : View.GONE);
+      tabs[i].setTextColor(i == tab ? Design.BG : Design.MUTED);
+      tabs[i].setBackground(Design.shape(this, i == tab ? Design.LIME : Design.BG, 16));
+      tabs[i].setSelected(i == tab);
+    }
+    scroll.scrollTo(0, 0);
+  }
+
+  private void rebuildPreservingDrafts() {
+    String draftKey = keyField.getText().toString(), draftModel = modelField.getText().toString();
+    if (catalogRequest != null) catalogRequest.cancel();
+    build();
+    keyField.setText(draftKey);
+    modelField.setText(draftModel);
+    if (image != null || request != null) analyzeImage.setVisibility(View.VISIBLE);
+    analyzeImage.setText(request == null ? "Analizuj wybrany zrzut" : "Przerwij analizę");
+  }
+
+  private void cancelRequests() {
+    imageVersion++;
+    if (request != null) request.cancel();
+    request = null;
+    if (catalogRequest != null) catalogRequest.cancel();
+    if (AppState.active)
+      startService(new Intent(this, CaptureService.class).setAction(CaptureService.CANCEL));
+    AppState.clearTask();
+    speech.stop();
+  }
+
+  private void refreshAccount() {
+    boolean plan = prefs.provider().equals("chatgpt");
+    accountBox.setVisibility(plan ? View.VISIBLE : View.GONE);
+    apiBox.setVisibility(plan ? View.GONE : View.VISIBLE);
+    accountBox.removeAllViews();
+    if (!plan) return;
+    try {
+      String selected = ChatGpt.selected(this);
+      org.json.JSONObject account = ChatGpt.account(this, selected);
+      boolean connected = !account.optString("access_token").isEmpty();
+      TextView hint =
+          Design.text(
+              this,
+              connected
+                  ? account.optString("email", "Konto ChatGPT")
+                      + "\n"
+                      + (ChatGpt.sharing(account)
+                          ? "● Korzystasz z planu ChatGPT"
+                          : "Wymagana zgoda na korzystanie z planu")
+                  : "Połącz konto i korzystaj z dostępnego planu lub kredytów ChatGPT.",
+              13,
+              Design.MUTED,
+              false);
+      hint.setPadding(0, dp(14), 0, dp(8));
+      accountBox.addView(hint);
+      Button login = Design.button(this, "Continue with ChatGPT", false);
+      login.setTextColor(Design.BG);
+      login.setBackground(Design.shape(this, Design.TEXT, 16));
+      login.setOnClickListener(
+          v ->
+              signIn(
+                  selected.isEmpty() ? prefs.store.getString("chatgpt.pendingId", "") : selected));
+      accountBox.addView(login);
+      Button choose = Design.button(this, "Zmień lub dodaj konto", false);
+      choose.setOnClickListener(
+          v -> {
+            try {
+              var accounts = ChatGpt.accounts(this);
+              String[] labels = new String[accounts.size() + 1];
+              for (int i = 0; i < accounts.size(); i++) labels[i] = accounts.get(i).name();
+              labels[accounts.size()] = "+ Dodaj inne konto";
+              new AlertDialog.Builder(this)
+                  .setTitle("Konta ChatGPT")
+                  .setItems(
+                      labels,
+                      (d, i) -> {
+                        if (i == accounts.size()) {
+                          signIn("");
+                          return;
+                        }
+                        try {
+                          cancelRequests();
+                          ChatGpt.select(this, accounts.get(i).id());
+                          modelField.setText(prefs.model());
+                          refreshAccount();
+                          show("Konto zmienione. Odśwież listę modeli tego konta.", false);
+                        } catch (Exception e) {
+                          error(e);
+                        }
+                      })
+                  .setNegativeButton("Zamknij", null)
+                  .show();
+            } catch (Exception e) {
+              error(e);
+            }
+          });
+      accountBox.addView(choose);
+      Button usage = Design.button(this, "Zarządzaj użyciem ↗", false);
+      usage.setOnClickListener(v -> openUrl("https://chatgpt.com/settings/usage"));
+      accountBox.addView(usage);
+      if (connected) {
+        Button logout = Design.button(this, "Wyloguj to konto", false);
+        logout.setOnClickListener(
+            v -> {
+              cancelRequests();
+              logout.setEnabled(false);
+              show("Wylogowuję konto…", false);
+              // Revocation must finish even if this screen closes or rotates.
+              ExecutorService signoutWorker = Executors.newSingleThreadExecutor();
+              signoutWorker.execute(
+                  () -> {
+                    try {
+                      boolean revoked = ChatGpt.signOut(getApplicationContext(), selected);
+                      runOnUiThread(
+                          () -> {
+                            if (!alive) return;
+                            refreshAccount();
+                            show(
+                                revoked
+                                    ? "Konto wylogowane."
+                                    : "Wylogowano na telefonie. Cofnięcia sesji online nie udało"
+                                        + " się potwierdzić; możesz odłączyć aplikację w"
+                                        + " ustawieniach ChatGPT.",
+                                !revoked);
+                          });
+                    } catch (Exception e) {
+                      runOnUiThread(
+                          () -> {
+                            if (alive) {
+                              logout.setEnabled(true);
+                              error(e);
+                            }
+                          });
+                    } finally {
+                      signoutWorker.shutdown();
+                    }
+                  });
+            });
+        accountBox.addView(logout);
+      }
+    } catch (Exception e) {
+      accountBox.addView(
+          Design.text(
+              this,
+              "Nie udało się odczytać zapisanych kont. " + ChatGptLoginService.message(e),
+              12,
+              Design.MUTED,
+              false));
+    }
+  }
+
+  private void signIn(String account) {
+    cancelRequests();
+    startActivityForResult(
+        new Intent(this, ChatGptActivity.class).putExtra("account", account), CHATGPT);
+  }
+
+  private void openUrl(String url) {
+    try {
+      startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+    } catch (ActivityNotFoundException e) {
+      show("Nie znaleziono przeglądarki. Zainstaluj ją i spróbuj ponownie.", true);
+    }
+  }
+
+  private void checkUpdates(Button button) {
+    button.setEnabled(false);
+    show("Sprawdzam wydania OKStudy…", false);
+    network.execute(
+        () -> {
+          try {
+            UpdateChecker.Release release = UpdateChecker.latest();
+            runOnUiThread(
+                () -> {
+                  if (!alive) return;
+                  button.setEnabled(true);
+                  if (release == null) {
+                    show(
+                        "Nie ma opublikowanego nowszego APK. Masz wersję "
+                            + BuildConfig.VERSION_NAME
+                            + ".",
+                        false);
+                    return;
+                  }
+                  new AlertDialog.Builder(this)
+                      .setTitle("OKStudy " + release.version())
+                      .setMessage(
+                          "Pobierz APK w przeglądarce i zainstaluj jako aktualizację. Android"
+                              + " sprawdzi podpis, a Twoje ustawienia pozostaną zapisane.")
+                      .setPositiveButton("Pobierz APK", (d, i) -> openUrl(release.url()))
+                      .setNegativeButton("Później", null)
+                      .show();
+                });
+          } catch (Exception e) {
+            runOnUiThread(
+                () -> {
+                  if (alive) {
+                    button.setEnabled(true);
+                    show("Nie udało się sprawdzić aktualizacji. Spróbuj później.", true);
+                  }
+                });
+          }
+        });
   }
 
   private void label(LinearLayout parent, String value) {
@@ -348,6 +732,7 @@ public final class MainActivity extends Activity {
       String fallback) {
     label(parent, title);
     Spinner s = spinner(parent, names);
+    if (key.equals("position")) positionPicker = s;
     int i = Arrays.asList(values).indexOf(prefs.store.getString(key, fallback));
     s.setSelection(Math.max(0, i));
     s.setOnItemSelectedListener(
@@ -356,6 +741,7 @@ public final class MainActivity extends Activity {
 
           public void onItemSelected(AdapterView<?> p, View v, int i, long id) {
             prefs.store.edit().putString(key, values[i]).apply();
+            if (preview != null) preview.invalidate();
           }
         });
   }
@@ -389,6 +775,14 @@ public final class MainActivity extends Activity {
     bar.setProgress(initial - min);
     parent.addView(bar, new LinearLayout.LayoutParams(-1, dp(40)));
     bar.setContentDescription(title);
+    if (key.equals("answerX")) {
+      positionX = bar;
+      positionXValue = value;
+    }
+    if (key.equals("answerY")) {
+      positionY = bar;
+      positionYValue = value;
+    }
     bar.setOnSeekBarChangeListener(
         new SeekBar.OnSeekBarChangeListener() {
           public void onStartTrackingTouch(SeekBar b) {}
@@ -400,6 +794,9 @@ public final class MainActivity extends Activity {
             value.setText((n + min) + unit);
             if (fraction) prefs.store.edit().putFloat(key, (n + min) / 100f).apply();
             else prefs.store.edit().putInt(key, n + min).apply();
+            if (key.equals("answerX") || key.equals("answerY"))
+              prefs.store.edit().putString("position", "custom").apply();
+            if (preview != null) preview.invalidate();
           }
         });
   }
@@ -407,10 +804,16 @@ public final class MainActivity extends Activity {
   private void saveConnection() throws Exception {
     String model = modelField.getText().toString().trim(),
         entered = keyField.getText().toString().trim();
-    String key = entered.isEmpty() ? secrets.get(prefs.provider()) : entered;
-    ApiClient.validate(prefs.provider(), key, model);
-    if (!entered.isEmpty()) secrets.put(prefs.provider(), entered);
-    prefs.store.edit().putString("model." + prefs.provider(), model).apply();
+    if (prefs.provider().equals("chatgpt")) {
+      ChatGpt.require(this, ChatGpt.selected(this));
+      if (!ApiClient.validModel(model))
+        throw new Exception("Pobierz modele konta ChatGPT i wybierz model.");
+    } else {
+      String key = entered.isEmpty() ? secrets.get(prefs.provider()) : entered;
+      ApiClient.validate(prefs.provider(), key, model);
+      if (!entered.isEmpty()) secrets.put(prefs.provider(), entered);
+    }
+    prefs.store.edit().putString(prefs.modelKey(), model).apply();
     keyField.setText("");
     keyHint();
   }
@@ -424,10 +827,12 @@ public final class MainActivity extends Activity {
 
   private void loadModels() {
     String provider = prefs.provider();
+    String account = ChatGpt.selected(this);
     try {
       String draft = keyField.getText().toString().trim(),
-          key = draft.isEmpty() ? secrets.get(provider) : draft;
-      ApiClient.validate(provider, key, "catalog");
+          key = provider.equals("chatgpt") ? "" : draft.isEmpty() ? secrets.get(provider) : draft;
+      if (provider.equals("chatgpt")) ChatGpt.require(this, account);
+      else ApiClient.validate(provider, key, "catalog");
       if (catalogRequest != null) catalogRequest.cancel();
       ApiClient.Cancel token = new ApiClient.Cancel();
       catalogRequest = token;
@@ -436,10 +841,17 @@ public final class MainActivity extends Activity {
       network.execute(
           () -> {
             try {
-              List<ApiClient.Model> models = new ApiClient().models(provider, key, token);
+              List<ApiClient.Model> models =
+                  provider.equals("chatgpt")
+                      ? ChatGpt.models(this, account, token)
+                      : new ApiClient().models(provider, key, token);
               runOnUiThread(
                   () -> {
-                    if (!alive || token.cancelled || !provider.equals(prefs.provider())) return;
+                    if (!alive
+                        || token.cancelled
+                        || !provider.equals(prefs.provider())
+                        || (provider.equals("chatgpt") && !account.equals(ChatGpt.selected(this))))
+                      return;
                     catalog.setEnabled(true);
                     if (models.isEmpty()) {
                       show("Konto nie zwróciło modeli. Możesz wpisać identyfikator ręcznie.", true);
@@ -534,6 +946,29 @@ public final class MainActivity extends Activity {
       moveTaskToBack(true);
     }
     if (code == IMAGE && result == RESULT_OK && data != null) loadImage(data.getData());
+    if (code == CHATGPT) {
+      selectedTab = 1;
+      build();
+      show(
+          ChatGpt.loginMessage.isEmpty() ? "Logowanie zostało zamknięte." : ChatGpt.loginMessage,
+          false);
+      try {
+        if (ChatGpt.sharing(ChatGpt.account(this, ChatGpt.selected(this)))
+            && !prefs.store.getBoolean("chatgpt.welcomed", false)) {
+          prefs.store.edit().putBoolean("chatgpt.welcomed", true).apply();
+          new AlertDialog.Builder(this)
+              .setTitle("Korzystasz ze swojego planu ChatGPT")
+              .setMessage(
+                  "Kwalifikujące się zadania korzystają z planu lub dostępnych kredytów ChatGPT."
+                      + " Dostęp i limity znajdziesz w Zarządzaj użyciem. Wybierz teraz model"
+                      + " konta.")
+              .setPositiveButton("Rozumiem", null)
+              .show();
+        }
+      } catch (Exception e) {
+        error(e);
+      }
+    }
   }
 
   @Override
@@ -554,6 +989,12 @@ public final class MainActivity extends Activity {
   }
 
   private void loadImage(Uri uri) {
+    final int version = ++imageVersion;
+    if (request != null) request.cancel();
+    request = null;
+    image = null;
+    analyzeImage.setText("Analizuj wybrany zrzut");
+    analyzeImage.setVisibility(View.GONE);
     show("Przygotowuję zrzut…", false);
     network.execute(
         () -> {
@@ -561,9 +1002,10 @@ public final class MainActivity extends Activity {
             String encoded = ImageCodec.fromUri(this, uri);
             runOnUiThread(
                 () -> {
-                  if (!alive) return;
+                  if (!alive || version != imageVersion) return;
                   image = encoded;
                   analyzeImage.setVisibility(View.VISIBLE);
+                  showTab(0);
                   show("Zrzut gotowy. Kliknij Analizuj, aby wysłać go do wybranego AI.", false);
                 });
           } catch (Exception e) {
@@ -582,50 +1024,114 @@ public final class MainActivity extends Activity {
     }
     try {
       saveConnection();
-      String provider = prefs.provider(),
-          model = prefs.model(),
-          key = secrets.get(provider),
-          captured = image;
+      AiConnection connection = new AiConnection(this);
+      String captured = image;
       boolean only = prefs.only();
       if (captured == null) return;
-      ApiClient.Cancel token = new ApiClient.Cancel();
-      request = token;
-      analyzeImage.setText("Przerwij analizę");
-      show("Analizuję zadanie…", false);
-      network.execute(
-          () -> {
-            try {
-              String value = new ApiClient().analyze(provider, key, model, captured, only, token);
-              runOnUiThread(
-                  () -> {
-                    if (!alive || request != token || token.cancelled) return;
-                    request = null;
-                    AppState.answer = value;
-                    AppState.error = "";
-                    image = null;
-                    analyzeImage.setText("Analizuj wybrany zrzut");
-                    analyzeImage.setVisibility(View.GONE);
-                    refreshState();
-                    show("Odpowiedź jest gotowa poniżej.", false);
-                    if (!prefs.voice().equals("off")) speech.read(value, this::error);
-                  });
-            } catch (Exception e) {
-              runOnUiThread(
-                  () -> {
-                    if (alive && request == token && !token.cancelled) {
-                      request = null;
-                      analyzeImage.setText("Analizuj wybrany zrzut");
-                      error(e);
-                    }
-                  });
-            }
-          });
+      if (!prefs.cropMode().equals("full")) {
+        showCrop(captured, selected -> sendShared(connection, selected, only));
+        return;
+      }
+      sendShared(connection, captured, only);
     } catch (Exception e) {
       error(e);
     }
   }
 
+  private void sendShared(AiConnection connection, String captured, boolean only) {
+    ApiClient.Cancel token = new ApiClient.Cancel();
+    request = token;
+    analyzeImage.setText("Przerwij analizę");
+    show("Analizuję zadanie…", false);
+    network.execute(
+        () -> {
+          try {
+            String value = connection.analyze(captured, only, token);
+            runOnUiThread(
+                () -> {
+                  if (!alive || request != token || token.cancelled) return;
+                  request = null;
+                  AppState.answer = value;
+                  AppState.error = "";
+                  AppState.remember(captured, connection);
+                  image = null;
+                  analyzeImage.setText("Analizuj wybrany zrzut");
+                  analyzeImage.setVisibility(View.GONE);
+                  refreshState();
+                  showTab(0);
+                  show("Odpowiedź jest gotowa poniżej.", false);
+                  if (!prefs.voice().equals("off")) speech.read(value, this::error);
+                });
+          } catch (Exception e) {
+            runOnUiThread(
+                () -> {
+                  if (alive && request == token && !token.cancelled) {
+                    request = null;
+                    analyzeImage.setText("Analizuj wybrany zrzut");
+                    error(e);
+                  }
+                });
+          }
+        });
+  }
+
+  private void showCrop(String jpeg, java.util.function.Consumer<String> accept) {
+    final int version = ++imageVersion;
+    Dialog dialog = new Dialog(this, android.R.style.Theme_Material_NoActionBar);
+    CropPanel panel =
+        new CropPanel(
+            this,
+            jpeg,
+            null,
+            selection -> {
+              dialog.dismiss();
+              // Shared images always get a fresh selection, never a screen crop from another app.
+              show("Przygotowuję wybrany fragment…", false);
+              network.execute(
+                  () -> {
+                    try {
+                      String cropped = CropPanel.crop(jpeg, selection.bounds());
+                      runOnUiThread(
+                          () -> {
+                            if (alive && version == imageVersion) accept.accept(cropped);
+                          });
+                    } catch (Exception e) {
+                      runOnUiThread(() -> error(e));
+                    }
+                  });
+            },
+            dialog::dismiss,
+            false);
+    dialog.setContentView(panel);
+    dialog.setOnDismissListener(d -> panel.dispose());
+    dialog.getWindow().setLayout(-1, -1);
+    dialog.show();
+    dialog.getWindow().setLayout(-1, -1);
+  }
+
+  private void explainLast() {
+    AppState.explainRequested = false;
+    AppState.LastTask task = AppState.lastTask();
+    if (task == null) {
+      show("Ostatni kadr wygasł. Przeanalizuj zadanie ponownie.", true);
+      return;
+    }
+    if (request != null) request.cancel();
+    showTab(0);
+    analyzeImage.setVisibility(View.VISIBLE);
+    sendShared(task.connection(), task.image(), false);
+  }
+
   private void refreshState() {
+    if (AppState.explainRequested) explainLast();
+    if (positionPicker != null) {
+      positionPicker.setSelection(
+          prefs.position().equals("custom") ? 2 : prefs.position().equals("top") ? 1 : 0);
+      positionX.setProgress(Math.round(prefs.answerX() * 100));
+      positionY.setProgress(Math.round(prefs.answerY() * 100));
+      positionXValue.setText(Math.round(prefs.answerX() * 100) + "%");
+      positionYValue.setText(Math.round(prefs.answerY() * 100) + "%");
+    }
     start.setText(AppState.active ? "Zakończ sesję na ekranie" : "Uruchom pomoc na ekranie");
     sessionState.setText(
         AppState.active
@@ -653,6 +1159,14 @@ public final class MainActivity extends Activity {
   }
 
   private void error(Exception error) {
+    if (error instanceof org.json.JSONException
+        || error instanceof java.security.GeneralSecurityException) {
+      show(
+          "Nie udało się odczytać poprawnej odpowiedzi usługi. Spróbuj ponownie lub zaloguj konto"
+              + " jeszcze raz.",
+          true);
+      return;
+    }
     show(
         error instanceof java.net.SocketTimeoutException
             ? "Usługa nie odpowiedziała na czas. Spróbuj ponownie."
@@ -663,6 +1177,7 @@ public final class MainActivity extends Activity {
   @Override
   protected void onResume() {
     super.onResume();
+    refreshAccount();
     handler.post(refresh);
   }
 
@@ -675,6 +1190,7 @@ public final class MainActivity extends Activity {
   @Override
   protected void onSaveInstanceState(Bundle state) {
     state.putBoolean("pendingStart", pendingStart);
+    state.putInt("tab", selectedTab);
     super.onSaveInstanceState(state);
   }
 

@@ -17,7 +17,69 @@ final class Prefs {
   }
 
   String model() {
-    return store.getString("model." + provider(), "");
+    return store.getString(modelKey(), "");
+  }
+
+  String modelKey() {
+    return "model."
+        + provider()
+        + (provider().equals("chatgpt") ? "." + store.getString("chatgpt.activeId", "") : "");
+  }
+
+  String cropMode() {
+    return store.getString("cropMode", "ask");
+  }
+
+  float answerX() {
+    return Math.max(0, Math.min(1, store.getFloat("answerX", .94f)));
+  }
+
+  float answerY() {
+    return Math.max(0, Math.min(1, store.getFloat("answerY", .84f)));
+  }
+
+  String longPress() {
+    return store.getString("longPress", "settings");
+  }
+
+  void profile(String name) {
+    var edit = store.edit().putString("profile", name);
+    switch (name) {
+      case "discreet":
+        edit.putBoolean("answerOnly", true)
+            .putString("style", "text")
+            .putFloat("opacity", .18f)
+            .putInt("textSize", 14)
+            .putInt("duration", 6)
+            .putString("indicator", "off")
+            .putString("voice", "off");
+        break;
+      case "readable":
+        edit.putBoolean("answerOnly", true)
+            .putString("style", "card")
+            .putFloat("opacity", .8f)
+            .putInt("textSize", 21)
+            .putInt("duration", 15)
+            .putString("indicator", "minimal")
+            .putString("voice", "off");
+        break;
+      case "study":
+        edit.putBoolean("answerOnly", false)
+            .putString("style", "card")
+            .putFloat("opacity", .8f)
+            .putInt("textSize", 18)
+            .putInt("duration", 30)
+            .putString("indicator", "full")
+            .putString("voice", "off");
+        break;
+      case "voice":
+        edit.putBoolean("answerOnly", true)
+            .putString("voice", "only")
+            .putString("engine", "system")
+            .putString("indicator", "minimal");
+        break;
+    }
+    edit.apply();
   }
 
   boolean only() {

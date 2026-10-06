@@ -22,5 +22,8 @@
         </activity>
         <service android:name=".CaptureService" android:exported="false"
             android:foregroundServiceType="mediaProjection" />
+        <activity android:name=".ChatGptActivity" android:exported="false" android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+        <service android:name=".ChatGptLoginService" android:exported="false" android:foregroundServiceType="shortService" />
     </application>
 </manifest>

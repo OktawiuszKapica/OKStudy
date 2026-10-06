@@ -135,7 +135,7 @@ Dokumentacja integracji ChatGPT: [logowanie](https://developers.openai.com/siwc/
 
 ## Wersja mobilna
 
-Paczka 2.1.0 zawiera rozszerzenie komputerowe i moduł Windows. Oddzielne **OKStudy Mobile 0.1.0** ma natywny projekt Androida z pływającym przyciskiem i analizą ekranu oraz źródła aplikacji iPhone/iPad ze zrzutami przez Udostępnij i Skróty. Instrukcja instalacji APK i budowania: [mobile/README.md](mobile/README.md). [Raport testów i ograniczenia](mobile/TESTING.md). Projekt Apple wymaga kompilacji i testów na Macu; logowanie abonamentem ChatGPT nie jest jeszcze częścią wersji mobilnej.
+Paczka 2.1.0 zawiera rozszerzenie komputerowe i moduł Windows. Oddzielne **OKStudy Android 0.2.0** dodaje do pływającego przycisku natywne logowanie ChatGPT, kadrowanie, profile, podgląd położenia wyniku i nowy wygląd z grafikami ImageGen. Wydanie skompilowano, ale na prośbę użytkownika nie uruchamiano emulatora ani aplikacji — [testy na telefonie](mobile/PHONE-TESTS.md) wykona osobiście. [Instrukcja](mobile/README.md), [stan weryfikacji](mobile/TESTING.md). Źródła iPhone/iPad pozostają w wersji 0.1.0 z kluczami API i wymagają kompilacji oraz testów na Macu.
 
 ## Autor
 

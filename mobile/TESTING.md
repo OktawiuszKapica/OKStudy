@@ -1,4 +1,23 @@
-# Weryfikacja OKStudy Mobile 0.1.0
+# Weryfikacja OKStudy Mobile
+
+## Android 0.2.0 — bez uruchamiania emulatora
+
+Na wyraźną prośbę Oktawiusza nie uruchamiano emulatora, aplikacji ani testów wykonujących jej kod. Wykonano kompilację release, analizę statyczną Android Lint, przegląd kodu i weryfikację podpisu pakietu. Testy na fizycznym telefonie wykonuje użytkownik według [PHONE-TESTS.md](PHONE-TESTS.md).
+
+Logowanie ChatGPT, wymiana/odnawianie tokenów, działanie po powrocie z przeglądarki, nowy kadr, odłączanie powierzchni między gestami, gest wyjaśnienia, profile i nowy interfejs **nie zostały sprawdzone w uruchomionej aplikacji**. Kompilacja nie potwierdza działania prawdziwego konta, limitów, obrazu lub jakości głosu. Nie wykonano płatnych wywołań API.
+
+Kod opiera się na oficjalnej dokumentacji [logowania](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [sesji](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions), [modeli i odpowiedzi](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) oraz [ograniczeń preview](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations). Wynik jest akceptowany po zdarzeniu `response.completed`; modele planu i API mają osobne wybory. Odświeżanie, ponowne logowanie i wylogowanie serializują zapis tokenów; operacje sieciowe nie trzymają blokady odczytu ustawień interfejsu.
+
+Same kontrole przygotowania APK, bez testów urządzenia:
+
+```powershell
+node scripts/mobile-build.mjs assembleRelease lintRelease '-Dorg.gradle.jvmargs=-Xmx768m'
+node scripts/mobile-package.mjs
+```
+
+Poniższe wyniki i polecenia emulatora są archiwum dla **0.1.0**, a nie wynikiem walidacji wydania 0.2.0. Nie uruchamiać emulatora bez zmiany dyspozycji użytkownika.
+
+## Archiwum 0.1.0
 
 ## Powtarzalne sprawdzenia Androida
 

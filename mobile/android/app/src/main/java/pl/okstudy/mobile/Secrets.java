@@ -15,6 +15,7 @@ import javax.crypto.spec.GCMParameterSpec;
 /** Device-bound encryption; no plaintext fallback and no cloud backup. */
 final class Secrets {
   private static final String ALIAS = "okstudy.mobile.keys.v1";
+  private static final Object KEY_LOCK = new Object();
   private final SharedPreferences store;
 
   Secrets(Context context) {
@@ -22,25 +23,28 @@ final class Secrets {
   }
 
   private SecretKey key() throws Exception {
-    KeyStore keys = KeyStore.getInstance("AndroidKeyStore");
-    keys.load(null);
-    if (!keys.containsAlias(ALIAS)) {
-      KeyGenerator generator =
-          KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
-      generator.init(
-          new KeyGenParameterSpec.Builder(
-                  ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
-              .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-              .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-              .build());
-      generator.generateKey();
+    synchronized (KEY_LOCK) {
+      KeyStore keys = KeyStore.getInstance("AndroidKeyStore");
+      keys.load(null);
+      if (!keys.containsAlias(ALIAS)) {
+        KeyGenerator generator =
+            KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+        generator.init(
+            new KeyGenParameterSpec.Builder(
+                    ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .build());
+        generator.generateKey();
+      }
+      return (SecretKey) keys.getKey(ALIAS, null);
     }
-    return (SecretKey) keys.getKey(ALIAS, null);
   }
 
   synchronized void put(String provider, String value) throws Exception {
     if (value.isEmpty()) {
-      store.edit().remove(provider).apply();
+      if (!store.edit().remove(provider).commit())
+        throw new Exception("Nie udało się usunąć połączenia.");
       return;
     }
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");

@@ -47,6 +47,7 @@ public final class SmokeRunner extends Instrumentation {
           .putBoolean("doubleTap", false)
           .putString("indicator", "minimal")
           .putString("voice", "off")
+          .putString("cropMode", "full")
           .putInt("duration", 30)
           .commit();
       new Secrets(context).put("openai", "test-only-key");
