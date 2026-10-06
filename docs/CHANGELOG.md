@@ -52,4 +52,3 @@ Nowy interfejs i identyfikacja, panel nauki, wybór fragmentu, rozmowa, historia
 - Obsługa wielu typów pytań
 - Tryb szybki i z wyszukiwaniem
 - Funkcja powtarzania odpowiedzi
-
