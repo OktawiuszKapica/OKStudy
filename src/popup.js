@@ -17,27 +17,67 @@ $('connection').onclick = () => {
     $('quickProvider').focus();
   }
 };
-async function quickModels() {
+async function quickModels(force = false) {
   const sequence = ++quickSequence;
   const plan = settings.provider === 'openai' && settings.openaiAuth === 'chatgpt';
   $('quickProvider').value = `${settings.provider}:${plan ? 'chatgpt' : 'api'}`;
   $('quickModel').replaceChildren(new Option('Wczytuję modele…', ''));
   $('quickModel').disabled = true;
   try {
-    const list = plan ? await send('chatgpt.models') : [...PROVIDERS[settings.provider].models];
+    const catalog = await send('models.list', {
+      provider: settings.provider,
+      auth: settings.openaiAuth,
+      force,
+    });
+    const list = [...catalog.models];
     if (sequence !== quickSequence) return;
     const selected = plan ? settings.chatgptModel : settings.models[settings.provider];
-    if (!plan && !list.some((m) => m.id === selected))
-      list.push({ id: selected, name: `${selected} · własny model` });
+    if (selected && !list.some((m) => m.id === selected))
+      list.push({ id: selected, name: `${selected} · poprzedni / własny wybór` });
     $('quickModel').replaceChildren(...list.map((m) => new Option(m.name, m.id)));
     $('quickModel').value = list.some((m) => m.id === selected) ? selected : list[0]?.id || '';
     $('quickModel').disabled = !list.length;
     if (!list.length) $('quickModel').add(new Option('Połącz konto w ustawieniach', ''));
+    $('modelCatalogStatus').textContent =
+      catalog.warning ||
+      (catalog.source === 'bundled' ? 'Lista startowa' : 'Modele dostępne na Twoim koncie');
   } catch {
     if (sequence === quickSequence)
       $('quickModel').replaceChildren(new Option('Połącz konto w ustawieniach', ''));
   }
 }
+$('refreshModels').onclick = () => quickModels(true);
+for (const [id, key] of [
+  ['quickAnswerOnly', 'expressAnswerOnly'],
+  ['quickIndicator', 'activityIndicator'],
+  ['quickVoice', 'voice'],
+])
+  $(id).onchange = async () => {
+    try {
+      await send('settings.save', {
+        settings: { [key]: $(id).type === 'checkbox' ? $(id).checked : $(id).value },
+      });
+      await refresh();
+    } catch (error) {
+      status(error.message, true);
+    }
+  };
+$('quickProfile').onchange = async () => {
+  if (!$('quickProfile').value) return;
+  try {
+    await send('profiles.apply', { id: $('quickProfile').value });
+    await refresh();
+  } catch (error) {
+    status(error.message, true);
+  }
+};
+$('explainLast').onclick = () => {
+  chrome.sidePanel
+    .open({ tabId })
+    .then(() => send('explain', { tabId }))
+    .then(() => window.close())
+    .catch((error) => status(error.message, true));
+};
 $('quickProvider').onchange = async () => {
   const [provider, auth] = $('quickProvider').value.split(':');
   $('quickProvider').disabled = true;
@@ -106,6 +146,14 @@ async function refresh() {
     }
   });
   $('internet').checked = settings.internet;
+  $('quickAnswerOnly').checked = settings.expressAnswerOnly;
+  $('quickIndicator').value = settings.activityIndicator;
+  $('quickVoice').value = settings.voice;
+  $('quickVoiceHint').textContent =
+    settings.voiceEngine === 'openai'
+      ? 'Wybrane źródło: OpenAI — płatne API dla nowych nagrań.'
+      : 'Wybrane źródło: głos przeglądarki / systemu.';
+  $('explainLast').disabled = !data.history.some((entry) => entry.tabId === tabId);
   historyRows($('recent'), data.history, (e) => openPanel(e.id), 2);
   $('emptyHistory').hidden = !!data.history.length;
   for (const id of ['region', 'screen', 'text']) $(id).disabled = !Number.isInteger(tabId);
@@ -136,5 +184,10 @@ for (const kind of ['region', 'screen', 'text'])
 void (async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   tabId = tab?.id;
+  const profiles = await send('profiles.list');
+  $('quickProfile').replaceChildren(
+    new Option('Wybierz profil…', ''),
+    ...profiles.map((profile) => new Option(profile.name, profile.id))
+  );
   await refresh();
 })().catch((e) => status(e.message, true));

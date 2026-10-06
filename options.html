@@ -19,7 +19,7 @@
           ><a href="#privacy" data-section="privacy"><span data-icon="shield"></span>Historia i prywatność</a>
         </nav>
         <div class="sidebar-bottom">
-          <div class="version">OKStudy <span id="version">2.0.2</span></div>
+          <div class="version">OKStudy <span id="version">2.1.0</span></div>
           <a href="https://oktawiuszkapica.pl" target="_blank" rel="noopener noreferrer"
             >Oktawiusz Kapica ↗</a
           >
@@ -106,16 +106,27 @@
               <details class="setup-guide" id="companionHelp">
                 <summary>Pierwsze połączenie na Windows</summary>
                 <p>
-                  Logowanie wymaga niewielkiego modułu OKStudy. Zainstaluj go raz dla tej przeglądarki.
-                  Potrzebny jest Node.js 22 lub nowszy.
+                  Zainstaluj moduł połączenia OKStudy. Instalator Windows zawiera potrzebne środowisko — bez
+                  osobnej instalacji Node.js.
                 </p>
                 <ol>
-                  <li>Otwórz folder <strong>companion</strong> z paczki OKStudy.</li>
-                  <li>Uruchom w nim PowerShell i wykonaj poniższe polecenie.</li>
+                  <li>Otwórz <strong>companion → OKStudy-Setup.exe</strong> z paczki OKStudy.</li>
+                  <li>
+                    Skopiuj poniższy identyfikator, wklej go w instalatorze i kliknij
+                    <strong>Zainstaluj połączenie</strong>.
+                  </li>
                   <li>Wróć tutaj i kliknij <strong>Continue with ChatGPT</strong>.</li>
                 </ol>
-                <code id="installCommand"></code
-                ><button class="text-button" id="copyInstall" type="button">Kopiuj polecenie</button>
+                <code id="extensionId"></code
+                ><button class="text-button" id="copyExtensionId" type="button">Kopiuj identyfikator</button>
+                <details>
+                  <summary>Instalacja ręczna przez PowerShell</summary>
+                  <p class="hint">
+                    Ta metoda wymaga Node.js 22 lub nowszego. Uruchom polecenie w folderze companion.
+                  </p>
+                  <code id="installCommand"></code
+                  ><button class="text-button" id="copyInstall" type="button">Kopiuj polecenie</button>
+                </details>
                 <p class="hint">
                   Dostępność modeli i limity zależą od konta. Korzystanie z abonamentu nie przełącza się
                   automatycznie na płatne API.
@@ -131,6 +142,10 @@
             <div class="model-field">
               <label for="model">Model</label
               ><select id="model"></select>
+              <div class="row wrap">
+                <button id="refreshModels" class="text-button" type="button">Odśwież modele konta</button
+                ><span class="hint" id="modelCatalogStatus"></span>
+              </div>
               <div id="customModelField" hidden>
                 <label for="customModel">Identyfikator własnego modelu</label
                 ><input
@@ -156,6 +171,23 @@
           </div>
           <div class="settings-card">
             <label>Domyślny sposób odpowiedzi</label>
+            <label for="profile">Profil ustawień</label
+            ><select id="profile">
+              <option value="">Wybierz profil…</option>
+            </select>
+            <div class="row wrap profile-tools">
+              <input
+                id="profileName"
+                maxlength="40"
+                placeholder="Nazwa mojego profilu"
+                aria-label="Nazwa profilu"
+              /><button id="saveProfile" class="text-button" type="button">Zapisz profil</button
+              ><button id="deleteProfile" class="text-button" type="button" disabled>Usuń profil</button>
+            </div>
+            <p class="hint">
+              Profile zmieniają sposób odpowiedzi i wyświetlania. Zachowują wybranego dostawcę, model oraz
+              źródło głosu.
+            </p>
             <div class="mode-cards" id="modes"></div>
             <p class="hint" id="modeHint"></p>
             <div class="field-grid">
@@ -202,6 +234,23 @@
             </div>
             <div class="field-grid">
               <div>
+                <label for="expressStyle">Forma odpowiedzi</label
+                ><select id="expressStyle">
+                  <option value="text">Sam tekst</option>
+                  <option value="label">Subtelna etykieta</option>
+                  <option value="card">Karta</option>
+                </select>
+              </div>
+              <div>
+                <label for="expressContrast">Kolor i kontrast</label
+                ><select id="expressContrast">
+                  <option value="subtle">Dyskretny — jasny tekst jak dotychczas</option>
+                  <option value="auto">Automatycznie do tła strony</option>
+                  <option value="light">Jasny tekst</option>
+                  <option value="dark">Ciemny tekst</option>
+                </select>
+              </div>
+              <div>
                 <label for="position">Pozycja odpowiedzi</label
                 ><select id="position">
                   <option value="br">Prawy dolny róg</option>
@@ -221,9 +270,20 @@
               </div>
               <div>
                 <label for="opacity">Widoczność <output id="opacityValue"></output></label
-                ><input id="opacity" type="range" min="25" max="100" step="5" />
+                ><input id="opacity" type="range" min="5" max="100" step="5" />
+              </div>
+              <div>
+                <label for="expressWidth">Maksymalna szerokość <output id="widthValue"></output></label
+                ><input id="expressWidth" type="range" min="160" max="720" step="20" />
               </div>
             </div>
+            <p class="hint">
+              Alt + przeciągnięcie przesuwa odpowiedź i zapamiętuje miejsce dla tej witryny. Alt + kliknięcie
+              otwiera wyjaśnienie w panelu. Bez Alt tekst przepuszcza kliknięcia do strony.
+            </p>
+            <button id="clearPositions" type="button" class="text-button">
+              Przywróć pozycje na wszystkich stronach
+            </button>
           </div>
           <div class="settings-card">
             <h3>Komunikat podczas analizy</h3>
@@ -276,8 +336,22 @@
                 z innych modeli lub z planu ChatGPT.
               </p>
               <p class="voice-disclosure">
-                Głos generowany przez AI. Każdy odczyt i próbka korzystają z płatnego API OpenAI, poza
-                abonamentem ChatGPT. Tekst odczytu jest wysyłany do OpenAI.
+                Głos generowany przez AI. Nowe nagrania i próbki korzystają z płatnego API OpenAI, poza
+                abonamentem ChatGPT. Tekst nowego odczytu jest wysyłany do OpenAI.
+              </p>
+              <label for="speechDailyLimit">Dzienny limit nowych odczytów API</label
+              ><input id="speechDailyLimit" type="number" min="0" max="1000" step="1" />
+              <p class="hint">
+                0 = bez limitu. Liczone są wysłane próby generowania, również zakończone błędem. Ponowne
+                odtwarzanie z pamięci nie zużywa limitu.
+              </p>
+              <p id="speechUsage" class="hint"></p>
+              <button id="clearSpeechCache" class="text-button" type="button">
+                Usuń zapamiętane nagrania
+              </button>
+              <p class="hint">
+                Pamięć bieżącej sesji mieści do 2 MB nagrań. Przez 30 minut możesz ponownie odsłuchać nagranie
+                bez zapytania do API.
               </p>
             </div>
             <label for="speechRate">Tempo odczytu <output id="speechRateValue"></output></label

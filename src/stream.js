@@ -38,8 +38,9 @@ export function apiError(status, raw = '') {
     message = 'Brak środków lub aktywnego rozliczania na koncie API.';
   else if (status === 401 || /api_key_invalid|invalid_api_key|api key not valid/.test(t))
     message = 'Nieprawidłowy klucz lub wygasłe połączenie. Sprawdź ustawienia konta.';
+  else if (status === 404 || /model_not_found|model.*(deprecated|retired|not found|does not exist)/.test(t))
+    message = 'Wybrany model jest niedostępny. Odśwież listę modeli w ustawieniach i wybierz dostępny model.';
   else if (status === 403) message = 'Konto nie ma dostępu do tej funkcji. Sprawdź model i uprawnienia.';
-  else if (status === 404) message = 'Wybrany model jest niedostępny. Zmień model w ustawieniach.';
   else if (status === 429) message = 'Osiągnięto limit zapytań. Odczekaj chwilę i spróbuj ponownie.';
   else if (status === 400)
     message = 'Model odrzucił zapytanie. Sprawdź obsługę obrazów i wyszukiwania lub wybierz inny model.';

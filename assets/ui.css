@@ -782,6 +782,44 @@ kbd {
 .voice-fields {
   margin-top: 20px;
 }
+.profile-tools {
+  margin-top: 12px;
+  margin-bottom: 18px;
+  gap: 12px;
+}
+.profile-tools input {
+  flex: 1;
+  min-width: 120px;
+}
+.quick-preferences {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-top: 12px;
+}
+.quick-preferences summary {
+  padding: 12px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+.quick-preferences-body {
+  padding: 0 14px 14px;
+}
+.quick-preferences-body > label:not(.switch-line) {
+  display: block;
+  font-size: 11px;
+  margin: 12px 0 7px;
+  color: var(--muted);
+}
+.quick-preferences-body select {
+  font-size: 12px;
+}
+#speechDailyLimit {
+  max-width: 180px;
+}
+#modelCatalogStatus {
+  overflow-wrap: anywhere;
+}
 .voice-fields label:not(:first-child) {
   margin-top: 18px;
 }

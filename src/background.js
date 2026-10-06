@@ -12,6 +12,18 @@ import { requestAI } from './providers.js';
 import { nativeRequest } from './native.js';
 import { expressResult } from './text.js';
 import { startRemoteSpeech, stopRemoteSpeech, finishRemoteSpeech } from './audio.js';
+import { accountCatalog } from './model-catalog.js';
+import {
+  listProfiles,
+  saveProfile,
+  applyProfile,
+  deleteProfile,
+  originOf,
+  loadPosition,
+  savePosition,
+  clearPositions,
+} from './preferences.js';
+import { clearSpeechCache, speechUsage } from './speech-cache.js';
 
 const jobs = new Map(),
   images = new Map(),
@@ -276,7 +288,11 @@ async function launch(tabId, kind, internetOverride, selectedText) {
       const list = await nativeRequest('models', {}, job.controller.signal);
       if (!list.length)
         throw new Error('To konto ChatGPT nie udostępnia obecnie modeli. Sprawdź ustawienia użycia planu.');
-      model = list.find((m) => m.id === settings.chatgptModel)?.id || list[0].id;
+      if (settings.chatgptModel && !list.some((m) => m.id === settings.chatgptModel))
+        throw new Error(
+          'Wybrany model nie jest już dostępny na tym koncie ChatGPT. Odśwież listę w ustawieniach i wybierz dostępny model.'
+        );
+      model = settings.chatgptModel || list[0].id;
     }
     const entry = {
       id: crypto.randomUUID(),
@@ -299,7 +315,7 @@ async function launch(tabId, kind, internetOverride, selectedText) {
     if (jobs.get(tabId) === job) jobs.delete(tabId);
   }
 }
-async function followup(tabId, id, question) {
+async function followup(tabId, id, question, explain = false) {
   if (typeof question !== 'string' || !question.trim() || question.length > 4000)
     throw new Error('Wpisz pytanie, maksymalnie 4000 znaków.');
   const entry = (await getHistory()).find((e) => e.id === id);
@@ -317,8 +333,12 @@ async function followup(tabId, id, question) {
       );
     await infer(
       job,
-      await getSettings(),
-      { ...entry, messages: [...entry.messages, { role: 'user', text: question.trim() }] },
+      { ...(await getSettings()), ...(explain ? { mode: 'tutor', voice: 'off' } : {}) },
+      {
+        ...entry,
+        ...(explain ? { mode: 'tutor', answerOnly: false } : {}),
+        messages: [...entry.messages, { role: 'user', text: question.trim() }],
+      },
       image
     );
   } catch (error) {
@@ -326,6 +346,15 @@ async function followup(tabId, id, question) {
   } finally {
     if (jobs.get(tabId) === job) jobs.delete(tabId);
   }
+}
+async function explainLast(tabId) {
+  const recent = (await chrome.storage.session.get(jobKey(tabId)))[jobKey(tabId)];
+  const history = await getHistory();
+  const entry =
+    history.find((entry) => entry.id === recent?.entryId) || history.find((entry) => entry.tabId === tabId);
+  if (!entry) throw new Error('Najpierw przeanalizuj zadanie na tej karcie.');
+  await chrome.storage.session.set({ 'okstudy.selected': entry.id });
+  return followup(tabId, entry.id, 'Wyjaśnij poprzednią odpowiedź krok po kroku. Podaj uzasadnienie.', true);
 }
 async function cancel(tabId) {
   jobs.get(tabId)?.controller.abort();
@@ -361,12 +390,32 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
   }
   const trusted = trustedPage(sender),
     fromContent = sender.tab && sender.frameId === 0;
-  if (!trusted && !(fromContent && ['cancel', 'openPanel'].includes(request.type))) return;
+  if (
+    !trusted &&
+    !(
+      fromContent &&
+      ['cancel', 'openPanel', 'explain', 'position.load', 'position.save'].includes(request.type)
+    )
+  )
+    return;
   if (request.type === 'openPanel') {
     chrome.sidePanel
       .open({ tabId: sender.tab.id })
       .then(() => respond({ ok: true }))
       .catch(() => respond({ ok: false, error: 'Otwórz panel przyciskiem pod ikoną OKStudy.' }));
+    return true;
+  }
+  if (request.type === 'explain') {
+    const explainTab = trusted ? Number(request.tabId) : sender.tab.id;
+    chrome.sidePanel
+      .open({ tabId: explainTab })
+      .then(() => {
+        respond({ ok: true });
+        void explainLast(explainTab).catch((error) =>
+          state(explainTab, { status: 'error', error: error.message })
+        );
+      })
+      .catch((error) => respond({ ok: false, error: error.message }));
     return true;
   }
   (async () => {
@@ -377,6 +426,36 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
         return snapshot(tabId);
       case 'settings.save':
         return updateSettings(request.settings || {}, request.keys);
+      case 'models.list': {
+        const settings = await getSettings();
+        const provider = request.provider || settings.provider;
+        const plan = provider === 'openai' && (request.auth || settings.openaiAuth) === 'chatgpt';
+        if (plan) return { models: await nativeRequest('models'), source: 'live', updatedAt: Date.now() };
+        const key =
+          typeof request.key === 'string' &&
+          sender.url?.split('#')[0] === chrome.runtime.getURL('options.html')
+            ? request.key.trim().slice(0, 4096)
+            : (await getKeys())[provider];
+        return accountCatalog(provider, key, request.force === true);
+      }
+      case 'profiles.list':
+        return listProfiles();
+      case 'profiles.save':
+        return saveProfile(request.name, request.settings);
+      case 'profiles.apply':
+        return applyProfile(request.id);
+      case 'profiles.delete':
+        return deleteProfile(request.id);
+      case 'position.load':
+        return loadPosition(originOf(sender.url));
+      case 'position.save':
+        return savePosition(originOf(sender.url), request.position);
+      case 'positions.clear':
+        return clearPositions();
+      case 'speech.usage':
+        return speechUsage();
+      case 'speech.cache.clear':
+        return clearSpeechCache();
       case 'speech.stop':
         await stopRemoteSpeech();
         return {};
@@ -420,6 +499,7 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
         return {};
       case 'history.delete':
         await stopRemoteSpeech();
+        await clearSpeechCache();
         for (const job of jobs.values())
           if (!request.id || job.entryId === request.id) await cancel(job.tabId);
         if (request.id) forgetImage(request.id);
@@ -481,12 +561,18 @@ chrome.commands.onCommand.addListener((command, commandTab) => {
       : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
     if (!tab?.id) return;
     if (command === 'cancel') return cancel(tab.id);
+    if (command === 'explain_last') {
+      await chrome.sidePanel.open({ tabId: tab.id });
+      return explainLast(tab.id);
+    }
     if (['solve_fast', 'solve_internet', 'solve_alt'].includes(command))
       return launch(tab.id, command === 'solve_alt' ? 'region' : 'screen', command === 'solve_internet');
     if (command === 'toggle_model') {
       const s = await getSettings(),
         plan = s.provider === 'openai' && s.openaiAuth === 'chatgpt';
-      const list = plan ? await nativeRequest('models') : PROVIDERS[s.provider].models;
+      const list = plan
+        ? await nativeRequest('models')
+        : (await accountCatalog(s.provider, (await getKeys())[s.provider])).models;
       if (!list.length) return;
       const current = plan ? s.chatgptModel : s.models[s.provider];
       const next = list[(list.findIndex((m) => m.id === current) + 1) % list.length];

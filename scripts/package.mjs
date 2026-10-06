@@ -29,6 +29,16 @@ for (const file of files) await cp(file, join(stage, file), { recursive: true })
 await mkdir(join(stage, 'companion'), { recursive: true });
 for (const file of ['dist', 'install.ps1'])
   await cp(join('companion', file), join(stage, 'companion', file), { recursive: true });
+if (process.platform === 'win32') {
+  const installer = join(releases, `OKStudy-Companion-${version}.exe`);
+  const metadata = JSON.parse(await readFile(`${installer}.json`, 'utf8'));
+  const hostHash = createHash('sha256')
+    .update(await readFile('companion/dist/host.cjs'))
+    .digest('hex');
+  if (metadata.version !== version || metadata.hashes['host.cjs'] !== hostHash)
+    throw new Error('Rebuild the installer: npm run build:installer');
+  await cp(installer, join(stage, 'companion', 'OKStudy-Setup.exe'));
+}
 const zip = join(releases, `OKStudy-${version}.zip`);
 if (process.platform === 'win32') {
   const ps = (value) => `'${value.replaceAll("'", "''")}'`;

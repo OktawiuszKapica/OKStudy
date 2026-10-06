@@ -896,8 +896,9 @@ function apiError(status, raw = "") {
     message2 = "Brak \u015Brodk\xF3w lub aktywnego rozliczania na koncie API.";
   else if (status === 401 || /api_key_invalid|invalid_api_key|api key not valid/.test(t))
     message2 = "Nieprawid\u0142owy klucz lub wygas\u0142e po\u0142\u0105czenie. Sprawd\u017A ustawienia konta.";
+  else if (status === 404 || /model_not_found|model.*(deprecated|retired|not found|does not exist)/.test(t))
+    message2 = "Wybrany model jest niedost\u0119pny. Od\u015Bwie\u017C list\u0119 modeli w ustawieniach i wybierz dost\u0119pny model.";
   else if (status === 403) message2 = "Konto nie ma dost\u0119pu do tej funkcji. Sprawd\u017A model i uprawnienia.";
-  else if (status === 404) message2 = "Wybrany model jest niedost\u0119pny. Zmie\u0144 model w ustawieniach.";
   else if (status === 429) message2 = "Osi\u0105gni\u0119to limit zapyta\u0144. Odczekaj chwil\u0119 i spr\xF3buj ponownie.";
   else if (status === 400)
     message2 = "Model odrzuci\u0142 zapytanie. Sprawd\u017A obs\u0142ug\u0119 obraz\xF3w i wyszukiwania lub wybierz inny model.";

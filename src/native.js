@@ -19,7 +19,7 @@ function disconnectedError(reason = '') {
   if (/failed to start|invalid.*host/i.test(reason))
     return connectionError(
       'NATIVE_HOST_START_FAILED',
-      'Nie udało się uruchomić modułu ChatGPT. Sprawdź instalację Node.js 22 lub nowszego i uruchom ponownie instalator modułu.'
+      'Nie udało się uruchomić modułu ChatGPT. Uruchom ponownie OKStudy-Setup.exe z nowej paczki. Przy instalacji ręcznej sprawdź również Node.js 22 lub nowszy.'
     );
   return connectionError(
     'NATIVE_HOST_DISCONNECTED',

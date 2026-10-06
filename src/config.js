@@ -63,7 +63,12 @@ export function normalizeSettings(raw = {}) {
     internet: raw.internet === true,
     persistentHistory: raw.persistentHistory === true,
     expressSize: Math.min(24, Math.max(11, Number(raw.expressSize) || 14)),
-    expressOpacity: Math.min(1, Math.max(0.25, Number(raw.expressOpacity) || 0.85)),
+    expressOpacity: Math.min(1, Math.max(0.05, Number(raw.expressOpacity) || 0.85)),
+    expressStyle: ['text', 'label', 'card'].includes(raw.expressStyle) ? raw.expressStyle : 'text',
+    expressContrast: ['subtle', 'auto', 'light', 'dark'].includes(raw.expressContrast)
+      ? raw.expressContrast
+      : 'subtle',
+    expressWidth: Math.min(720, Math.max(160, Number(raw.expressWidth) || 460)),
     expressDuration: Math.min(30, Math.max(3, Number(raw.expressDuration) || 8)),
     expressAnswerOnly: raw.expressAnswerOnly === true,
     activityIndicator: ['full', 'minimal', 'off'].includes(raw.activityIndicator)
@@ -72,6 +77,7 @@ export function normalizeSettings(raw = {}) {
     systemVoice: typeof raw.systemVoice === 'string' ? raw.systemVoice.slice(0, 500) : '',
     speechRate: Math.min(1.4, Math.max(0.7, Number(raw.speechRate) || 1)),
     voiceEngine: raw.voiceEngine === 'openai' ? 'openai' : 'system',
+    speechDailyLimit: Math.min(1000, Math.max(0, Math.floor(Number(raw.speechDailyLimit) || 0))),
     openaiVoice: [
       'marin',
       'cedar',

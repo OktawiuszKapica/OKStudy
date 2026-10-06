@@ -1,5 +1,15 @@
 # Historia wersji
 
+## 2.1.0
+
+- Forma Express: tekst, etykieta albo karta; opcjonalny automatyczny kontrast, ręczny jasny/ciemny tekst i zachowany wariant dyskretny z widocznością od 5%. Regulacja szerokości odpowiedzi.
+- Alt + przeciągnięcie zapisuje pozycję dla witryny. Alt + kliknięcie otwiera pełne wyjaśnienie w panelu, bez napisu lub przycisku przy krótkiej odpowiedzi. Dostępny także własny skrót klawiaturowy.
+- Profile Nauka, Dyskretna odpowiedź, Słuchanie i do 8 własnych profili. Szybkie ustawienia pod ikoną rozszerzenia.
+- Katalog modeli pobierany z konta API każdego dostawcy lub konta ChatGPT. Odświeżanie, pamięć listy API do 6 godzin i zachowanie poprzedniego wyboru po wycofaniu modelu.
+- Pamięć ostatnich nagrań OpenAI i dzienny limit prób generowania. Ponowny odczyt z pamięci nie wysyła zapytania API.
+- Instalator EXE na Windows x64 zawiera Node.js i zachowuje konta oraz istniejące rejestracje rozszerzenia. PowerShell pozostaje opcją zaawansowaną.
+- Testy nowych ustawień, pozycji, katalogów modeli, profili, pamięci nagrań i samodzielnego instalatora. Projekt mobilny opisany osobno; ta wersja nie zawiera aplikacji Android/iOS.
+
 ## 2.0.2
 
 - Odpowiedzi Express bez widocznych znaczników Markdown, z zachowaniem numeracji i zwykłych znaków matematycznych.

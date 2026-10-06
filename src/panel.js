@@ -45,7 +45,9 @@ function remoteSpeechState(value = {}) {
       (value.status === 'loading'
         ? 'Generuję głos OpenAI…'
         : value.status === 'playing'
-          ? 'Odtwarzam głos wygenerowany przez AI.'
+          ? value.fromCache
+            ? 'Odtwarzam zapisane nagranie — bez nowego zapytania API.'
+            : 'Odtwarzam głos wygenerowany przez AI.'
           : ''),
     value.status === 'error',
     'speechStatus'

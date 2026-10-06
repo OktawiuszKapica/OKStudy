@@ -8,6 +8,8 @@ npm run check
 npx playwright install chromium
 npm run test:browser
 npm run test:presentation
+npm run build:installer
+npm test
 npm run package
 ```
 
@@ -22,6 +24,12 @@ Test przeglądarkowy ładuje rzeczywisty manifest MV3 do osobnego profilu Chromi
 Test `test:presentation` sprawdza nowe ustawienia i odpowiedzi w prawdziwym skrypcie strony z zamkniętym Shadow DOM: usuwanie gwiazdek, dokładnie `D` oraz `Dynamika Techniczna`, trzy warianty komunikatu, kliknięcie kropek, błąd znikający po 1,5 sekundy i zachowanie tekstu przy awarii odczytu. API głosowe zastępuje syntetyczna odpowiedź z trzysekundowym cichym nagraniem WAV; rzeczywisty odtwarzacz `offscreen` dekoduje je i zgłasza koniec. Sprawdzane są też odczyt automatyczny, tryb „Tylko głos”, próbka, odczyt z panelu oraz anulowanie podczas generowania. Strona zadania ma `media-src 'none'`, aby zweryfikować odtwarzanie niezależne od jej ograniczeń. Raport i zrzuty: `artifacts/presentation/`. Jakość i dostępność rzeczywistych głosów OpenAI wymagają oddzielnego odsłuchu z kluczem API.
 
 Testy Node obejmują dodatkowo format krótkich odpowiedzi, instrukcje wszystkich dostawców, zachowanie znaków matematycznych, limit długości odczytu, wybór i anulowanie głosu systemowego, osobne poświadczenia API odczytu, brak automatycznej zamiany konta ChatGPT na API i zachowanie odtwarzania przy ponownym uruchomieniu service workera.
+
+Wersja 2.1.0 dodaje testy stronicowania katalogów modeli, odświeżania i rozdzielenia list według klucza, zachowania wycofanego wyboru, profili bez zmiany połączenia, pozycji per witryna, kontrastu, pamięci nagrań i atomowego limitu dziennego. W przeglądarce sprawdzane są też rzeczywiste gesty Alt + przeciągnięcie i Alt + kliknięcie, 5% widoczności, szybkie ustawienia i zmiana nazwy modelu w kontrolowanym katalogu dostawcy.
+
+Test instalatora wymaga zbudowanego EXE (`npm run build:installer`). W pozostałych środowiskach jest oznaczony jako pominięty. Na Windows instaluje pliki do osobnego katalogu, sprawdza błędne ID, zachowanie istniejących rejestracji i syntetycznych poświadczeń oraz otrzymuje odpowiedź Native Messaging uruchamiając dołączony Node.js. Tryb `--test-install` nie zmienia prawdziwego rejestru. Podgląd okna instalatora trafia do `artifacts/installer/` i wymaga oceny wizualnej.
+
+Weryfikacja wersji **2.1.0** z 6 października 2026: **41 testów Node (bez pominięć), 22 kontrole dotychczasowych funkcji, 36 kontroli odpowiedzi/ustawień/głosu oraz 7 kontroli Native Messaging — zakończone powodzeniem**. Instalator obejrzano i uruchomiono również dla lokalnej instalacji; hash modułu jest zgodny z paczką, a test Chromium korzysta już z dołączonego środowiska Node.js. Jeden przebieg testu podglądu instalatora przekroczył zbyt krótki limit czasu przy równoległych testach Windows; limit zwiększono i pełny zestaw przeszedł ponownie. Katalogi, generowanie odpowiedzi i głosu były testowane na kontrolowanych danych, bez płatnych wywołań. Aplikacja mobilna nie została zbudowana ani sprawdzona na urządzeniu.
 
 Weryfikacja wersji **2.0.2** z 6 października 2026: **32 testy Node, 22 kontrole dotychczasowych funkcji, 23 kontrole odpowiedzi i głosu oraz 7 kontroli Native Messaging — wszystkie zakończone powodzeniem**. Łącznie 52 kontrole przeglądarkowe. Odtwarzacz sprawdzono na nagraniu testowym; nie wykonywano płatnych wywołań ani rzeczywistego logowania na konto użytkownika.
 

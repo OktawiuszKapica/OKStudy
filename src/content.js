@@ -1,10 +1,14 @@
 import { shortAnswer } from './config.js';
 import { createSystemSpeech } from './speech.js';
+import { expressTheme, positionWithin } from './appearance.js';
 
 if (!globalThis.__okstudyV2) {
   globalThis.__okstudyV2 = true;
   let host, root, noteTimer, cancelSelection;
   let currentSettings = { activityIndicator: 'full' };
+  let altHeld = false;
+  const expressCSS =
+    '.express{animation:none}.express-label{border:1px solid var(--answer-border);border-radius:8px;padding:5px 9px;background:var(--answer-bg);text-shadow:none}.express-card{border:1px solid var(--answer-border);border-radius:14px;padding:14px 18px;background:var(--answer-bg);box-shadow:0 5px 22px #0002;text-shadow:none}.express.interactive{pointer-events:auto;cursor:grab;touch-action:none}.express.interactive:active{cursor:grabbing}';
   const speaker = createSystemSpeech((state, error) => {
     if (state === 'error') errorNotice(error, currentSettings, true);
   });
@@ -16,7 +20,7 @@ if (!globalThis.__okstudyV2) {
     host.style.cssText = 'all:initial;position:static;';
     root = host.attachShadow({ mode: 'closed' });
     const style = document.createElement('style');
-    style.textContent = css + feedbackCSS;
+    style.textContent = css + feedbackCSS + expressCSS;
     root.append(style);
     document.documentElement.append(host);
     return root;
@@ -86,6 +90,113 @@ if (!globalThis.__okstudyV2) {
     }
     n.append(b);
   }
+  function paintAnswer(n, settings) {
+    const box = n.getBoundingClientRect();
+    const previous = host.style.visibility;
+    host.style.visibility = 'hidden';
+    let element = document.elementFromPoint(
+      Math.min(innerWidth - 1, box.x + box.width / 2),
+      Math.min(innerHeight - 1, box.y + box.height / 2)
+    );
+    const layers = [];
+    while (element) {
+      const values = getComputedStyle(element)
+        .backgroundColor.match(/[\d.]+/g)
+        ?.map(Number);
+      if (values?.length >= 3) layers.push(values);
+      element = element.parentElement;
+    }
+    host.style.visibility = previous;
+    let color = [255, 255, 255];
+    for (const layer of layers.reverse())
+      color = color.map((value, i) => layer[i] * (layer[3] ?? 1) + value * (1 - (layer[3] ?? 1)));
+    const theme = expressTheme(settings, color);
+    n.style.color = theme.color;
+    n.style.setProperty('--answer-bg', theme.background);
+    n.style.setProperty('--answer-border', theme.border);
+    n.style.textShadow = settings.expressStyle === 'text' ? theme.shadow : 'none';
+  }
+  function placeAnswer(n, position) {
+    const box = n.getBoundingClientRect();
+    const point = positionWithin(position, box.width, box.height, innerWidth, innerHeight);
+    n.style.left = `${point.left}px`;
+    n.style.top = `${point.top}px`;
+    n.style.right = 'auto';
+    n.style.bottom = 'auto';
+    n.style.transform = 'none';
+    n.savedPosition = position;
+  }
+  function bindAnswer(n, settings) {
+    n.classList.toggle('interactive', altHeld);
+    let drag;
+    n.addEventListener('pointerdown', (event) => {
+      if (!event.altKey || event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const box = n.getBoundingClientRect();
+      drag = { x: event.clientX, y: event.clientY, left: box.x, top: box.y, moved: false };
+      n.setPointerCapture(event.pointerId);
+    });
+    n.addEventListener('pointermove', (event) => {
+      if (!drag) return;
+      const dx = event.clientX - drag.x,
+        dy = event.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 5) drag.moved = true;
+      if (!drag.moved) return;
+      n.dataset.moved = 'true';
+      const box = n.getBoundingClientRect();
+      placeAnswer(n, {
+        x: Math.min(1, Math.max(0, (drag.left + dx - 4) / Math.max(1, innerWidth - box.width - 8))),
+        y: Math.min(1, Math.max(0, (drag.top + dy - 4) / Math.max(1, innerHeight - box.height - 8))),
+      });
+    });
+    n.addEventListener('pointerup', (event) => {
+      if (!drag) return;
+      event.preventDefault();
+      event.stopPropagation();
+      n.releasePointerCapture(event.pointerId);
+      if (drag.moved) {
+        paintAnswer(n, settings);
+        void chrome.runtime.sendMessage({ type: 'position.save', position: n.savedPosition }).catch(() => {});
+      } else void chrome.runtime.sendMessage({ type: 'explain' }).catch(() => {});
+      drag = null;
+    });
+    n.addEventListener('pointercancel', () => {
+      drag = null;
+    });
+    void chrome.runtime
+      .sendMessage({ type: 'position.load' })
+      .then((result) => {
+        if (!n.isConnected) return;
+        if (result?.ok && result.data && !n.dataset.moved) placeAnswer(n, result.data);
+        paintAnswer(n, settings);
+      })
+      .catch(() => {});
+  }
+  const setAlt = (value) => {
+    altHeld = value;
+    root?.querySelector('.express')?.classList.toggle('interactive', value);
+  };
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key === 'Alt') setAlt(true);
+    },
+    true
+  );
+  document.addEventListener(
+    'keyup',
+    (event) => {
+      if (!event.altKey) setAlt(false);
+    },
+    true
+  );
+  window.addEventListener('blur', () => setAlt(false));
+  window.addEventListener('resize', () => {
+    const n = root?.querySelector('.express');
+    if (n?.savedPosition) placeAnswer(n, n.savedPosition);
+    if (n) paintAnswer(n, currentSettings);
+  });
   function showAnswer(text, settings) {
     clear();
     currentSettings = settings;
@@ -109,6 +220,8 @@ if (!globalThis.__okstudyV2) {
     }
     const n = notice(shortAnswer(text), false, settings.expressDuration * 1000);
     n.classList.add('express');
+    if (settings.expressStyle !== 'text') n.classList.add(`express-${settings.expressStyle}`);
+    n.style.maxWidth = `min(${settings.expressWidth || 460}px, calc(100vw - 16px))`;
     n.style.fontSize = `${settings.expressSize}px`;
     n.style.opacity = settings.expressOpacity;
     if (settings.pos.startsWith('t')) {
@@ -124,6 +237,7 @@ if (!globalThis.__okstudyV2) {
       n.style.right = 'auto';
       n.style.transform = 'translateX(-50%)';
     }
+    bindAnswer(n, settings);
   }
   async function copy(text) {
     try {

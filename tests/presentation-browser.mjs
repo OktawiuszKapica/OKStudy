@@ -75,8 +75,19 @@ try {
         audio,
       };
       globalThis.fetch = async (url, init) => {
-        const fixture = globalThis.__fixture,
-          body = JSON.parse(init.body);
+        const fixture = globalThis.__fixture;
+        if (!init.body) {
+          if (String(url).includes('googleapis'))
+            return Response.json({
+              models: [
+                { name: 'models/gemini-3.8-flash', supportedGenerationMethods: ['generateContent'] },
+                ...(fixture.catalog || []),
+              ],
+            });
+          if (String(url).includes('openai')) return Response.json({ data: [{ id: 'gpt-future-test' }] });
+          throw new Error('Unexpected model catalog URL');
+        }
+        const body = JSON.parse(init.body);
         fixture.requests.push({ url: String(url), body, authorization: init.headers.Authorization });
         if (String(url) === 'https://api.openai.com/v1/audio/speech') {
           await new Promise((resolve) => setTimeout(resolve, fixture.ttsDelay));
@@ -87,7 +98,12 @@ try {
         }
         if (!String(url).startsWith('https://generativelanguage.googleapis.com/'))
           throw new Error('Unexpected network request in test');
-        const { answer, delay, fail, hold } = fixture;
+        const { delay, fail, hold } = fixture;
+        const answer = JSON.stringify(body.system_instruction || body.systemInstruction).includes(
+          'Wyjaśnij rozwiązanie'
+        )
+          ? 'Wyjaśnienie testowe: D wynika z podanych przesłanek.'
+          : fixture.answer;
         if (hold)
           await new Promise((resolve) => {
             globalThis.__releaseAI = resolve;
@@ -163,7 +179,7 @@ try {
           objectId: object.objectId,
           returnByValue: true,
           functionDeclaration:
-            'function(){const r=this.getBoundingClientRect();return {text:this.textContent,classes:this.className,width:r.width,height:r.height,x:r.x,y:r.y,dots:this.querySelectorAll(".dot").length,button:this.querySelector("button")?.getAttribute("aria-label")}}',
+            'function(){const r=this.getBoundingClientRect(),s=getComputedStyle(this);return {text:this.textContent,classes:this.className,width:r.width,height:r.height,x:r.x,y:r.y,color:s.color,background:s.backgroundColor,opacity:s.opacity,pointerEvents:s.pointerEvents,buttons:this.querySelectorAll("button").length,dots:this.querySelectorAll(".dot").length,button:this.querySelector("button")?.getAttribute("aria-label")}}',
         });
         await cdp.send('Runtime.releaseObject', { objectId: object.objectId });
         return result.value;
@@ -329,6 +345,7 @@ try {
   await until(speech, (value) => value?.status === 'idle', 'cancel playback');
   check('cancel also stops OpenAI audio after analysis has finished', (await notes()).length === 0);
 
+  await send('speech.cache.clear');
   await fixture({ ttsFail: true });
   await launch();
   await job('done');
@@ -365,12 +382,174 @@ try {
   );
   await panel.locator('#speakAnswer').click();
   await until(speech, (value) => value?.status === 'idle', 'panel stop');
+  await send('speech.cache.clear');
   await fixture({ ttsDelay: 1200 });
   await panel.locator('#speakAnswer').click();
   await until(speech, (value) => value?.status === 'loading', 'pending speech');
   await panel.locator('#speakAnswer').click();
   await pause(1350);
   check('cancel during generation prevents delayed audio playback', (await speech()).status === 'idle');
+  await fixture({ ttsDelay: 0 });
+  const audioBefore = await worker.evaluate(
+    () => globalThis.__fixture.requests.filter((request) => request.url.includes('/audio/speech')).length
+  );
+  await send('speech.read', { entryId: current.id, tabId });
+  await until(speech, (value) => value?.status === 'playing', 'first cached recording');
+  await send('speech.stop');
+  await send('speech.read', { entryId: current.id, tabId });
+  const cached = await until(speech, (value) => value?.status === 'playing', 'replayed recording');
+  check(
+    'replaying the same answer uses the recording without another API request',
+    cached.fromCache === true &&
+      (await worker.evaluate(
+        () => globalThis.__fixture.requests.filter((request) => request.url.includes('/audio/speech')).length
+      )) ===
+        audioBefore + 1
+  );
+  await send('speech.stop');
+
+  await send('settings.save', {
+    settings: {
+      voice: 'off',
+      expressStyle: 'text',
+      expressContrast: 'auto',
+      expressOpacity: 1,
+      activityIndicator: 'off',
+    },
+  });
+  await launch();
+  await job('done');
+  await answer('D');
+  const automatic = (
+    await until(
+      notes,
+      (values) => values.some((note) => note.color === 'rgb(20, 32, 25)'),
+      'automatic contrast'
+    )
+  )[0];
+  check(
+    'automatic contrast is readable on a light page without extra answer controls',
+    automatic.buttons === 0 && automatic.pointerEvents === 'none'
+  );
+  await page.keyboard.down('Alt');
+  await page.mouse.move(automatic.x + 6, automatic.y + 6);
+  await page.mouse.down();
+  await page.mouse.move(180, 370, { steps: 8 });
+  await page.mouse.up();
+  await page.keyboard.up('Alt');
+  const moved = (await notes())[0];
+  check('Alt-drag moves the answer without obscuring the rest of the page', moved.x < 300 && moved.y < 450);
+  await launch();
+  await job('done');
+  await answer('D');
+  const remembered = (await until(notes, (values) => values[0]?.x < 300, 'saved position'))[0];
+  check(
+    'the next answer restores the position for this website',
+    Math.abs(remembered.x - moved.x) < 2 && Math.abs(remembered.y - moved.y) < 2
+  );
+  await send('settings.save', { settings: { expressContrast: 'subtle', expressOpacity: 0.05 } });
+  await launch();
+  await job('done');
+  await answer('D');
+  check(
+    'the subtle option preserves a barely visible answer at 5% opacity',
+    (await notes())[0].opacity === '0.05'
+  );
+  await send('settings.save', {
+    settings: { expressStyle: 'card', expressOpacity: 1, expressContrast: 'auto' },
+  });
+  await launch();
+  await job('done');
+  await answer('D');
+  check('card styling remains optional', (await notes())[0].classes.includes('express-card'));
+  await page.screenshot({ path: join(output, 'express-card.png') });
+  const explainAnswer = (await notes())[0];
+  await page.keyboard.down('Alt');
+  await page.mouse.click(
+    explainAnswer.x + explainAnswer.width / 2,
+    explainAnswer.y + explainAnswer.height / 2
+  );
+  await page.keyboard.up('Alt');
+  await job('running');
+  const explained = await job('done');
+  check(
+    'Alt-click requests a full explanation in the panel without adding an on-page label',
+    explained.history[0].messages.length === 4 &&
+      explained.history[0].mode === 'tutor' &&
+      explained.settings.mode === 'express' &&
+      explained.history[0].messages.at(-1).text.includes('Wyjaśnienie testowe')
+  );
+
+  await options.reload();
+  await options.locator('#profile').selectOption('quick');
+  check(
+    'the discreet preset adjusts controls without changing the provider',
+    (await options.locator('#opacity').inputValue()) === '35' &&
+      (await send('snapshot')).settings.provider === 'gemini'
+  );
+  await options.locator('#profileName').fill('Moja powtórka');
+  await options.locator('#saveProfile').click();
+  await options.getByText('Profil został zapisany.', { exact: true }).waitFor();
+  check(
+    'custom profiles can be saved from the settings UI',
+    (await send('profiles.list')).some((profile) => profile.name === 'Moja powtórka')
+  );
+  await options.locator('#save').click();
+  await options.getByText('Ustawienia zostały zapisane.', { exact: true }).waitFor();
+  await options.getByRole('link', { name: 'AI i połączenia', exact: true }).click();
+  await fixture({
+    catalog: [
+      {
+        name: 'models/new-google-family-test',
+        displayName: 'Nowa nazwa Google — test',
+        supportedGenerationMethods: ['generateContent'],
+      },
+    ],
+  });
+  await options.locator('#refreshModels').click();
+  await until(
+    () => options.locator('#model option[value="new-google-family-test"]').count(),
+    (count) => count === 1,
+    'live new model'
+  );
+  check('a renamed Google model appears from the live catalog without an extension update', true);
+  await options.locator('#model').selectOption('new-google-family-test');
+  await options.locator('#save').click();
+  await options.getByText('Ustawienia zostały zapisane.', { exact: true }).waitFor();
+  await fixture({ catalog: [] });
+  await options.locator('#refreshModels').click();
+  await until(
+    () => options.locator('#modelCatalogStatus').textContent(),
+    (text) => text.includes('nie ma na liście'),
+    'retired model warning'
+  );
+  check(
+    'a removed model stays visible with a warning instead of silently switching',
+    (await options.locator('#model').inputValue()) === 'new-google-family-test'
+  );
+  await send('settings.save', { settings: { models: { gemini: 'gemini-3.8-flash' } } });
+  const popup = await context.newPage();
+  await popup.goto(`${extension}/popup.html`);
+  await popup.locator('.quick-preferences summary').click();
+  await popup.locator('#quickIndicator').selectOption('minimal');
+  await until(
+    () => send('snapshot'),
+    (value) => value.settings.activityIndicator === 'minimal',
+    'quick setting'
+  );
+  check('popup quick settings save without opening the full settings page', true);
+  await popup.locator('#quickProfile').selectOption('quick');
+  await until(
+    () => send('snapshot'),
+    (value) => value.settings.activityIndicator === 'off',
+    'quick profile'
+  );
+  check(
+    'popup profiles apply the whole presentation preset',
+    (await send('snapshot')).settings.expressOpacity === 0.35
+  );
+  await popup.setViewportSize({ width: 400, height: 950 });
+  await popup.screenshot({ path: join(output, 'popup-quick-settings.png'), fullPage: true });
   check('no JavaScript errors in settings, content, panel or offscreen pages', errors.length === 0);
   await writeFile(
     join(output, 'report.json'),

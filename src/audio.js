@@ -1,6 +1,7 @@
 import { getKeys } from './storage.js';
 import { speechText, OPENAI_VOICES } from './speech.js';
 import { apiError } from './stream.js';
+import { speechCacheId, cachedSpeech, cacheSpeech, reserveSpeech } from './speech-cache.js';
 
 export const SPEECH_STATE = 'okstudy.speech';
 let active, creating;
@@ -69,38 +70,49 @@ export async function startRemoteSpeech(text, settings, meta = {}, keyOverride) 
     const input = speechText(text);
     if (!input) throw new Error('Brak tekstu do przeczytania.');
     const voice = OPENAI_VOICES.includes(settings.openaiVoice) ? settings.openaiVoice : 'marin';
+    const speed = Math.min(1.4, Math.max(0.7, settings.speechRate || 1));
+    const cacheId = await speechCacheId(key, input, voice, speed);
+    let audio = await cachedSpeech(cacheId);
+    const fromCache = !!audio;
     task.controller.signal.throwIfAborted();
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini-tts',
-        voice,
-        input,
-        response_format: 'mp3',
-        speed: Math.min(1.4, Math.max(0.7, settings.speechRate || 1)),
-        instructions:
-          'Czytaj naturalnie po polsku, wyraźnie i spokojnie. Nie dodawaj żadnego wstępu ani komentarza.',
-      }),
-      signal: AbortSignal.any([task.controller.signal, AbortSignal.timeout(45000)]),
-    });
-    if (!response.ok) throw apiError(response.status, await response.text());
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (!bytes.length || bytes.length > 8 * 1024 * 1024)
-      throw new Error('Usługa głosowa zwróciła nieprawidłowe nagranie.');
+    if (!audio) {
+      await reserveSpeech(settings, alive);
+      task.controller.signal.throwIfAborted();
+      const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini-tts',
+          voice,
+          input,
+          response_format: 'mp3',
+          speed,
+          instructions:
+            'Czytaj naturalnie po polsku, wyraźnie i spokojnie. Nie dodawaj żadnego wstępu ani komentarza.',
+        }),
+        signal: AbortSignal.any([task.controller.signal, AbortSignal.timeout(45000)]),
+      });
+      if (!response.ok) throw apiError(response.status, await response.text());
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (!bytes.length || bytes.length > 8 * 1024 * 1024)
+        throw new Error('Usługa głosowa zwróciła nieprawidłowe nagranie.');
+      if (!alive()) return { cancelled: true };
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 8192)
+        binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      audio = `data:audio/mpeg;base64,${btoa(binary)}`;
+      await cacheSpeech(cacheId, audio).catch(() => {});
+    }
     if (!alive()) return { cancelled: true };
-    let binary = '';
-    for (let i = 0; i < bytes.length; i += 8192)
-      binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
     await ensurePlayer();
     if (!alive()) return { cancelled: true };
-    await state('playing');
+    await state('playing', { fromCache });
     if (!alive()) return { cancelled: true };
     const result = await player({
       type: 'play',
       id: task.id,
       tabId: task.tabId,
-      audio: `data:audio/mpeg;base64,${btoa(binary)}`,
+      audio,
     });
     if (!result?.ok) throw new Error(result?.error || 'Nie udało się odtworzyć głosu OpenAI.');
     return { id: task.id };

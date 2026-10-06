@@ -1,6 +1,7 @@
 import { PROVIDERS, USAGE_URL } from './config.js';
 import { $, send, initializeUI, applyTheme, modes, status, copy, icon } from './ui.js';
 import { createSystemSpeech, systemVoices, OPENAI_VOICES } from './speech.js';
+import { expressTheme } from './appearance.js';
 initializeUI();
 document.querySelector('.settings-main').inert = true;
 let settings,
@@ -8,7 +9,10 @@ let settings,
   drafts = {},
   dirty = false,
   authGeneration = 0,
-  chatgptModels = [];
+  chatgptModels = [],
+  modelGeneration = 0,
+  apiCatalogs = {},
+  profiles = [];
 const modesHelp = {
   tutor: 'Pełne wyjaśnienie w panelu obok strony, z możliwością dopytania.',
   hint: 'Jedna wskazówka na początek. Kolejne podpowiedzi i rozwiązanie odsłaniasz samodzielnie.',
@@ -86,7 +90,9 @@ function providerButtons() {
 function populateModels() {
   const plan = settings.provider === 'openai' && settings.openaiAuth === 'chatgpt';
   const current = plan ? settings.chatgptModel : settings.models[settings.provider];
-  const list = plan ? chatgptModels : PROVIDERS[settings.provider].models;
+  const list = plan
+    ? chatgptModels
+    : apiCatalogs[settings.provider]?.models || PROVIDERS[settings.provider].models;
   $('model').replaceChildren();
   if (plan && !list.length) {
     const o = new Option('Zaloguj się, aby pobrać modele', '');
@@ -97,13 +103,50 @@ function populateModels() {
   }
   $('model').disabled = false;
   for (const m of list) $('model').add(new Option(m.name + (m.detail ? ` · ${m.detail}` : ''), m.id));
-  if (!plan) $('model').add(new Option('Własny / wcześniej wybrany model…', '__custom'));
   const known = list.some((m) => m.id === current);
-  $('model').value = known ? current : plan ? list[0].id : '__custom';
-  if (plan && !known) settings.chatgptModel = list[0].id;
-  $('customModelField').hidden = plan || known;
+  if (current && !known) $('model').add(new Option(`${current} · poprzedni / własny wybór`, current));
+  if (!plan) $('model').add(new Option('Własny / wcześniej wybrany model…', '__custom'));
+  $('model').value = current || list[0]?.id || '__custom';
+  if (plan && !current && list.length) settings.chatgptModel = list[0].id;
+  $('customModelField').hidden = true;
   $('customModel').value = plan ? '' : current;
 }
+async function refreshModels(force = false) {
+  const generation = ++modelGeneration,
+    provider = settings.provider,
+    auth = settings.openaiAuth;
+  $('refreshModels').disabled = true;
+  $('modelCatalogStatus').textContent = 'Pobieram listę modeli…';
+  try {
+    const catalog = await send('models.list', {
+      provider,
+      auth,
+      force,
+      ...(drafts[provider] ? { key: drafts[provider] } : {}),
+    });
+    if (generation !== modelGeneration || provider !== settings.provider || auth !== settings.openaiAuth)
+      return;
+    if (provider === 'openai' && auth === 'chatgpt') chatgptModels = catalog.models;
+    else apiCatalogs[provider] = catalog;
+    populateModels();
+    const selected =
+      provider === 'openai' && auth === 'chatgpt' ? settings.chatgptModel : settings.models[provider];
+    const missing =
+      selected && !catalog.models.some((model) => model.id === selected) && catalog.source !== 'bundled';
+    $('modelCatalogStatus').textContent =
+      catalog.warning ||
+      (missing
+        ? 'Wybranego modelu nie ma na liście konta. Wybierz dostępny model lub sprawdź własny identyfikator.'
+        : catalog.updatedAt
+          ? `Lista konta · ${new Date(catalog.updatedAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
+          : 'Lista startowa');
+  } catch (error) {
+    if (generation === modelGeneration) $('modelCatalogStatus').textContent = error.message;
+  } finally {
+    if (generation === modelGeneration) $('refreshModels').disabled = false;
+  }
+}
+$('refreshModels').onclick = () => refreshModels(true);
 async function refreshAccount() {
   const generation = ++authGeneration;
   try {
@@ -154,6 +197,9 @@ async function refreshAccount() {
 }
 function renderProvider() {
   authGeneration++;
+  modelGeneration++;
+  $('refreshModels').disabled = false;
+  $('modelCatalogStatus').textContent = '';
   providerButtons();
   const provider = PROVIDERS[settings.provider],
     plan = settings.provider === 'openai' && settings.openaiAuth === 'chatgpt';
@@ -177,6 +223,7 @@ function renderProvider() {
   status('', false, 'testStatus');
   populateModels();
   if (plan) void refreshAccount();
+  else void refreshModels();
   renderSpeechSettings();
 }
 function renderModes() {
@@ -194,6 +241,17 @@ function preview() {
     : 'D — krótkie wyjaśnienie odpowiedzi.';
   sample.style.fontSize = `${settings.expressSize}px`;
   sample.style.opacity = settings.expressOpacity;
+  const theme = expressTheme(
+    settings,
+    document.documentElement.dataset.theme === 'light' ? [247, 249, 243] : [18, 25, 23]
+  );
+  sample.style.color = theme.color;
+  sample.style.background = settings.expressStyle === 'text' ? 'transparent' : theme.background;
+  sample.style.border = settings.expressStyle === 'text' ? 'none' : `1px solid ${theme.border}`;
+  sample.style.borderRadius = settings.expressStyle === 'card' ? '12px' : '6px';
+  sample.style.padding =
+    settings.expressStyle === 'card' ? '12px 14px' : settings.expressStyle === 'label' ? '4px 8px' : '0';
+  sample.style.maxWidth = `min(${settings.expressWidth}px, calc(100% - 20px))`;
   sample.style.top = settings.pos.startsWith('t') ? '10px' : 'auto';
   sample.style.bottom = settings.pos.startsWith('t') ? 'auto' : '10px';
   sample.style.left = settings.pos.endsWith('l') ? '10px' : settings.pos === 'bc' ? '50%' : 'auto';
@@ -201,6 +259,7 @@ function preview() {
   sample.style.transform = settings.pos === 'bc' ? 'translateX(-50%)' : '';
   $('sizeValue').textContent = `${settings.expressSize} px`;
   $('opacityValue').textContent = `${Math.round(settings.expressOpacity * 100)}%`;
+  $('widthValue').textContent = `${settings.expressWidth} px`;
   $('durationValue').textContent = `${settings.expressDuration} s`;
   $('activityFull').hidden = settings.activityIndicator !== 'full';
   $('activityMinimal').hidden = settings.activityIndicator !== 'minimal';
@@ -213,6 +272,80 @@ function preview() {
           ? 'Kliknięcie kropek lub Alt+K przerywa analizę.'
           : 'Alt+K przerywa analizę.');
 }
+const appearanceFields = {
+  voice: 'voice',
+  theme: 'theme',
+  position: 'pos',
+  duration: 'expressDuration',
+  size: 'expressSize',
+  opacity: 'expressOpacity',
+  activityIndicator: 'activityIndicator',
+  voiceEngine: 'voiceEngine',
+  openaiVoice: 'openaiVoice',
+  speechRate: 'speechRate',
+  expressStyle: 'expressStyle',
+  expressContrast: 'expressContrast',
+  expressWidth: 'expressWidth',
+  speechDailyLimit: 'speechDailyLimit',
+};
+function syncAppearance() {
+  for (const [id, key] of Object.entries(appearanceFields))
+    $(id).value = ['opacity', 'speechRate'].includes(id) ? settings[key] * 100 : settings[key];
+  for (const id of ['internet', 'persistentHistory', 'expressAnswerOnly']) $(id).checked = settings[id];
+  populateVoices();
+  renderModes();
+  renderSpeechSettings();
+  preview();
+}
+async function refreshProfiles() {
+  profiles = await send('profiles.list');
+  $('profile').replaceChildren(
+    new Option('Wybierz profil…', ''),
+    ...profiles.map((profile) => new Option(profile.name, profile.id))
+  );
+}
+$('profile').onchange = () => {
+  const profile = profiles.find((profile) => profile.id === $('profile').value);
+  if (!profile) return;
+  settings = { ...settings, ...profile.settings };
+  $('deleteProfile').disabled = !profile.custom;
+  $('profileName').value = profile.custom ? profile.name : '';
+  changed();
+  syncAppearance();
+};
+$('saveProfile').onclick = async () => {
+  try {
+    const profile = await send('profiles.save', { name: $('profileName').value, settings });
+    await refreshProfiles();
+    $('profile').value = profile.id;
+    $('deleteProfile').disabled = false;
+    status('Profil został zapisany.');
+  } catch (error) {
+    status(error.message, true);
+  }
+};
+$('deleteProfile').onclick = async () => {
+  try {
+    await send('profiles.delete', { id: $('profile').value });
+    await refreshProfiles();
+    $('deleteProfile').disabled = true;
+    status('Usunięto profil.');
+  } catch (error) {
+    status(error.message, true);
+  }
+};
+$('clearPositions').onclick = () =>
+  send('positions.clear')
+    .then(() => status('Przywrócono pozycje. Zmiana zadziała przy kolejnej odpowiedzi.'))
+    .catch((error) => status(error.message, true));
+async function refreshSpeechUsage() {
+  const usage = await send('speech.usage');
+  $('speechUsage').textContent = `Próby generowania dzisiaj: ${usage.count}.`;
+}
+$('clearSpeechCache').onclick = () =>
+  send('speech.cache.clear')
+    .then(() => status('Usunięto zapamiętane nagrania.', false, 'speechStatus'))
+    .catch((error) => status(error.message, true, 'speechStatus'));
 $('apiKey').oninput = () => {
   drafts[settings.provider] = $('apiKey').value;
   if (settings.provider === 'openai') $('speechKey').value = drafts.openai;
@@ -247,6 +380,7 @@ $('stopVoice').onclick = () => {
   void send('speech.stop').catch((e) => status(e.message, true, 'speechStatus'));
 };
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes['okstudy.speechUsage']) void refreshSpeechUsage();
   if (area !== 'session' || !changes['okstudy.speech']) return;
   const voice = changes['okstudy.speech'].newValue || {};
   status(
@@ -254,7 +388,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
       (voice.status === 'loading'
         ? 'Generuję głos OpenAI…'
         : voice.status === 'playing'
-          ? 'Odtwarzam głos wygenerowany przez AI.'
+          ? voice.fromCache
+            ? 'Odtwarzam zapisane nagranie — bez nowego zapytania API.'
+            : 'Odtwarzam głos wygenerowany przez AI.'
           : ''),
     voice.status === 'error',
     'speechStatus'
@@ -307,13 +443,17 @@ for (const [id, key] of [
   ['systemVoice', 'systemVoice'],
   ['openaiVoice', 'openaiVoice'],
   ['speechRate', 'speechRate'],
+  ['expressStyle', 'expressStyle'],
+  ['expressContrast', 'expressContrast'],
+  ['expressWidth', 'expressWidth'],
+  ['speechDailyLimit', 'speechDailyLimit'],
 ]) {
   $(id).oninput = () => {
     const el = $(id);
     settings[key] =
       el.type === 'checkbox'
         ? el.checked
-        : el.type === 'range'
+        : ['range', 'number'].includes(el.type)
           ? Number(el.value) / (['opacity', 'speechRate'].includes(id) ? 100 : 1)
           : el.value;
     changed();
@@ -423,6 +563,11 @@ $('planWelcome').addEventListener('cancel', () => {
 });
 $('installCommand').textContent =
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -ExtensionId ${chrome.runtime.id}`;
+$('extensionId').textContent = chrome.runtime.id;
+$('copyExtensionId').onclick = () =>
+  copy(chrome.runtime.id)
+    .then(() => status('Skopiowano identyfikator dla instalatora.', false, 'authStatus'))
+    .catch((error) => status(error.message, true, 'authStatus'));
 $('copyInstall').onclick = () =>
   copy($('installCommand').textContent)
     .then(() => status('Skopiowano polecenie instalacji.', false, 'authStatus'))
@@ -477,6 +622,9 @@ void (async () => {
   $('persistentHistory').checked = settings.persistentHistory;
   $('expressAnswerOnly').checked = settings.expressAnswerOnly;
   populateVoices();
+  syncAppearance();
+  await refreshProfiles();
+  await refreshSpeechUsage();
   preview();
   $('historyCount').textContent = `Zapisane zadania: ${data.history.length} / 40`;
   $('version').textContent = chrome.runtime.getManifest().version;

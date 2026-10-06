@@ -38,6 +38,8 @@
         </select>
         <label for="quickModel">Model</label
         ><select id="quickModel"></select>
+        <button id="refreshModels" type="button" class="text-button">Odśwież modele konta</button>
+        <p id="modelCatalogStatus" class="hint"></p>
         <button id="manageConnection" class="text-button">Połącz konto lub zarządzaj kluczami ↗</button>
       </div>
       <div id="setupHint" class="inline-note" hidden>
@@ -51,6 +53,32 @@
         ><button class="button secondary" id="text"><span data-icon="text"></span>Zaznaczony tekst</button>
       </div>
       <div class="segmented" id="modes" aria-label="Sposób odpowiedzi"></div>
+      <details class="quick-preferences">
+        <summary>Szybkie ustawienia</summary>
+        <div class="quick-preferences-body">
+          <label for="quickProfile">Profil</label
+          ><select id="quickProfile">
+            <option value="">Wybierz profil…</option>
+          </select>
+          <label class="switch-line compact"
+            ><span>Tylko odpowiedź</span><input type="checkbox" role="switch" id="quickAnswerOnly"
+          /></label>
+          <label for="quickIndicator">Komunikat analizy</label
+          ><select id="quickIndicator">
+            <option value="full">Pełny</option>
+            <option value="minimal">Małe kropki</option>
+            <option value="off">Wyłączony</option>
+          </select>
+          <label for="quickVoice">Czytanie na głos</label
+          ><select id="quickVoice">
+            <option value="off">Tylko tekst</option>
+            <option value="both">Tekst i głos</option>
+            <option value="only">Tylko głos</option>
+          </select>
+          <p class="hint" id="quickVoiceHint"></p>
+          <button id="explainLast" type="button" class="text-button">Wyjaśnij ostatnią odpowiedź ↗</button>
+        </div>
+      </details>
       <label class="switch-line compact"
         ><span><span data-icon="globe"></span>Sprawdź w internecie</span
         ><input type="checkbox" id="internet" role="switch"
