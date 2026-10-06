@@ -1,5 +1,6 @@
 import { PROVIDERS, USAGE_URL } from './config.js';
 import { $, send, initializeUI, applyTheme, modes, status, copy, icon } from './ui.js';
+import { createSystemSpeech, systemVoices, OPENAI_VOICES } from './speech.js';
 initializeUI();
 document.querySelector('.settings-main').inert = true;
 let settings,
@@ -13,6 +14,33 @@ const modesHelp = {
   hint: 'Jedna wskazówka na początek. Kolejne podpowiedzi i rozwiązanie odsłaniasz samodzielnie.',
   express: 'Krótka odpowiedź w wybranym miejscu na stronie.',
 };
+const speaker = createSystemSpeech((state, error) =>
+  status(error || (state === 'playing' ? 'Odtwarzam próbkę głosu.' : ''), state === 'error', 'speechStatus')
+);
+function populateVoices() {
+  const selected = settings?.systemVoice || '';
+  $('systemVoice').replaceChildren(new Option('Automatyczny polski głos', ''));
+  const voices = systemVoices();
+  for (const voice of voices)
+    $('systemVoice').add(new Option(`${voice.name} · ${voice.lang}`, voice.voiceURI));
+  if (selected && !voices.some((v) => v.voiceURI === selected))
+    $('systemVoice').add(new Option('Zapisany głos jest teraz niedostępny', selected));
+  $('systemVoice').value = selected;
+}
+speechSynthesis.addEventListener('voiceschanged', populateVoices);
+for (const voice of OPENAI_VOICES)
+  $('openaiVoice').add(new Option(voice[0].toUpperCase() + voice.slice(1), voice));
+function renderSpeechSettings() {
+  const remote = settings.voiceEngine === 'openai';
+  $('systemSpeechFields').hidden = remote;
+  $('openaiSpeechFields').hidden = !remote;
+  $('testVoice').textContent = remote ? 'Posłuchaj przykładu (płatne API)' : 'Posłuchaj przykładu';
+  $('speechKey').value = drafts.openai || '';
+  $('speechKey').placeholder = configured.openai
+    ? 'Klucz zapisany. Puste pole zachowuje połączenie.'
+    : 'sk-…';
+  $('speechRateValue').textContent = `${settings.speechRate.toFixed(2)}×`;
+}
 function changed() {
   dirty = true;
   $('saveHint').textContent = 'Masz niezapisane zmiany.';
@@ -149,6 +177,7 @@ function renderProvider() {
   status('', false, 'testStatus');
   populateModels();
   if (plan) void refreshAccount();
+  renderSpeechSettings();
 }
 function renderModes() {
   modes($('modes'), settings.mode, (mode) => {
@@ -160,6 +189,9 @@ function renderModes() {
 }
 function preview() {
   const sample = $('expressSample');
+  sample.textContent = settings.expressAnswerOnly
+    ? 'Dynamika Techniczna'
+    : 'D — krótkie wyjaśnienie odpowiedzi.';
   sample.style.fontSize = `${settings.expressSize}px`;
   sample.style.opacity = settings.expressOpacity;
   sample.style.top = settings.pos.startsWith('t') ? '10px' : 'auto';
@@ -170,11 +202,64 @@ function preview() {
   $('sizeValue').textContent = `${settings.expressSize} px`;
   $('opacityValue').textContent = `${Math.round(settings.expressOpacity * 100)}%`;
   $('durationValue').textContent = `${settings.expressDuration} s`;
+  $('activityFull').hidden = settings.activityIndicator !== 'full';
+  $('activityMinimal').hidden = settings.activityIndicator !== 'minimal';
+  $('activityOff').hidden = settings.activityIndicator !== 'off';
+  $('activityHint').textContent =
+    settings.activityIndicator === 'full'
+      ? 'Pełny komunikat z przyciskiem przerwania i opisem błędu.'
+      : 'Błąd: mały „!” przez 1,5 sekundy. Szczegóły w panelu OKStudy. ' +
+        (settings.activityIndicator === 'minimal'
+          ? 'Kliknięcie kropek lub Alt+K przerywa analizę.'
+          : 'Alt+K przerywa analizę.');
 }
 $('apiKey').oninput = () => {
   drafts[settings.provider] = $('apiKey').value;
+  if (settings.provider === 'openai') $('speechKey').value = drafts.openai;
   changed();
 };
+$('speechKey').oninput = () => {
+  drafts.openai = $('speechKey').value;
+  if (settings.provider === 'openai') $('apiKey').value = drafts.openai;
+  changed();
+};
+$('testVoice').onclick = async () => {
+  speaker.stop();
+  $('testVoice').disabled = true;
+  try {
+    await send('speech.stop');
+    if (settings.voiceEngine === 'openai') {
+      status('Generuję próbkę głosu OpenAI…', false, 'speechStatus');
+      await send('speech.preview', {
+        voice: settings.openaiVoice,
+        rate: settings.speechRate,
+        key: drafts.openai,
+      });
+    } else speaker.speak('Cześć! To przykładowy głos OKStudy. Odpowiedź to: Dynamika Techniczna.', settings);
+  } catch (e) {
+    status(e.message, true, 'speechStatus');
+  } finally {
+    $('testVoice').disabled = false;
+  }
+};
+$('stopVoice').onclick = () => {
+  speaker.stop();
+  void send('speech.stop').catch((e) => status(e.message, true, 'speechStatus'));
+};
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'session' || !changes['okstudy.speech']) return;
+  const voice = changes['okstudy.speech'].newValue || {};
+  status(
+    voice.error ||
+      (voice.status === 'loading'
+        ? 'Generuję głos OpenAI…'
+        : voice.status === 'playing'
+          ? 'Odtwarzam głos wygenerowany przez AI.'
+          : ''),
+    voice.status === 'error',
+    'speechStatus'
+  );
+});
 $('showKey').onclick = () => {
   const show = $('apiKey').type === 'password';
   $('apiKey').type = show ? 'text' : 'password';
@@ -216,6 +301,12 @@ for (const [id, key] of [
   ['opacity', 'expressOpacity'],
   ['internet', 'internet'],
   ['persistentHistory', 'persistentHistory'],
+  ['expressAnswerOnly', 'expressAnswerOnly'],
+  ['activityIndicator', 'activityIndicator'],
+  ['voiceEngine', 'voiceEngine'],
+  ['systemVoice', 'systemVoice'],
+  ['openaiVoice', 'openaiVoice'],
+  ['speechRate', 'speechRate'],
 ]) {
   $(id).oninput = () => {
     const el = $(id);
@@ -223,11 +314,12 @@ for (const [id, key] of [
       el.type === 'checkbox'
         ? el.checked
         : el.type === 'range'
-          ? Number(el.value) / (id === 'opacity' ? 100 : 1)
+          ? Number(el.value) / (['opacity', 'speechRate'].includes(id) ? 100 : 1)
           : el.value;
     changed();
     if (id === 'theme') applyTheme(settings.theme);
     preview();
+    renderSpeechSettings();
   };
 }
 $('testKey').onclick = async () => {
@@ -375,10 +467,16 @@ void (async () => {
     duration: settings.expressDuration,
     size: settings.expressSize,
     opacity: settings.expressOpacity * 100,
+    activityIndicator: settings.activityIndicator,
+    voiceEngine: settings.voiceEngine,
+    openaiVoice: settings.openaiVoice,
+    speechRate: settings.speechRate * 100,
   }))
     $(id).value = value;
   $('internet').checked = settings.internet;
   $('persistentHistory').checked = settings.persistentHistory;
+  $('expressAnswerOnly').checked = settings.expressAnswerOnly;
+  populateVoices();
   preview();
   $('historyCount').textContent = `Zapisane zadania: ${data.history.length} / 40`;
   $('version').textContent = chrome.runtime.getManifest().version;
@@ -395,3 +493,6 @@ void (async () => {
     $('shortcutList').append(row);
   }
 })().catch((e) => status(e.message, true));
+window.addEventListener('pagehide', () => {
+  speaker.stop();
+});

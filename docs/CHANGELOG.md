@@ -1,5 +1,15 @@
 # Historia wersji
 
+## 2.0.2
+
+- Odpowiedzi Express bez widocznych znaczników Markdown, z zachowaniem numeracji i zwykłych znaków matematycznych.
+- Opcja „Tylko odpowiedź, bez wyjaśnień”: sama litera, hasło lub wynik. Obsługiwana przez czterech dostawców API i zaktualizowany moduł ChatGPT.
+- Trzy warianty komunikatu analizy: pełny, małe animowane kropki z przerwaniem po kliknięciu oraz wyłączony. Dyskretny wykrzyknik błędu znika po 1,5 sekundy.
+- Wybór głosu systemowego, tempo odczytu i odsłuch próbki.
+- Opcjonalny głos OpenAI przez osobno płatne API: wybór 13 głosów, odczyt automatyczny i na żądanie, przerywanie generowania i odtwarzania. Działa również dla odpowiedzi innych dostawców i planu ChatGPT. Koszty i przekazywanie tekstu są opisane w ustawieniach.
+- Odtwarzacz poza stroną zadania (`offscreen`), aby ograniczenia multimediów na stronie nie blokowały głosu. Błąd odczytu zachowuje odpowiedź tekstową.
+- Testy dokładnych odpowiedzi, komunikatów, ustawień, izolacji kluczy i rzeczywistego odtwarzacza w Chromium z kontrolowanymi odpowiedziami API.
+
 ## 2.0.1
 
 Naprawa pierwszego połączenia z kontem ChatGPT: uprawnienie Native Messaging jest dostępne od uruchomienia rozszerzenia. Osobne komunikaty wyjaśniają brak modułu, niedostępne uprawnienie, odmowę dostępu i problem z uruchomieniem Node.js. Poprawione kodowanie instalatora dla Windows PowerShell 5. Dodano testy tego połączenia w rzeczywistym Chromium i kontrolę parsowania instalatora.

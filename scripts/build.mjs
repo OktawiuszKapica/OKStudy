@@ -6,7 +6,14 @@ await mkdir('js', { recursive: true });
 await mkdir('assets/fonts', { recursive: true });
 await mkdir('assets/katex', { recursive: true });
 await build({
-  entryPoints: ['src/background.js', 'src/content.js', 'src/options.js', 'src/popup.js', 'src/panel.js'],
+  entryPoints: [
+    'src/background.js',
+    'src/content.js',
+    'src/options.js',
+    'src/popup.js',
+    'src/panel.js',
+    'src/audio-player.js',
+  ],
   bundle: true,
   outdir: 'js',
   format: 'iife',

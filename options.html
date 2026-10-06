@@ -19,7 +19,7 @@
           ><a href="#privacy" data-section="privacy"><span data-icon="shield"></span>Historia i prywatność</a>
         </nav>
         <div class="sidebar-bottom">
-          <div class="version">OKStudy <span id="version">2.0.1</span></div>
+          <div class="version">OKStudy <span id="version">2.0.2</span></div>
           <a href="https://oktawiuszkapica.pl" target="_blank" rel="noopener noreferrer"
             >Oktawiusz Kapica ↗</a
           >
@@ -190,6 +190,12 @@
               <h3>Express po Twojemu</h3>
               <span class="tag">PODGLĄD NA ŻYWO</span>
             </div>
+            <label class="switch-line"
+              ><span
+                ><strong>Tylko odpowiedź, bez wyjaśnień</strong
+                ><small>Pytanie ABCD: „D”. Pytanie otwarte: „Dynamika Techniczna”.</small></span
+              ><input type="checkbox" role="switch" id="expressAnswerOnly"
+            /></label>
             <div class="express-preview" id="expressPreview">
               <div class="preview-page"><i></i><i></i><i></i></div>
               <span id="expressSample">x = 2 lub x = 3</span>
@@ -218,6 +224,73 @@
                 ><input id="opacity" type="range" min="25" max="100" step="5" />
               </div>
             </div>
+          </div>
+          <div class="settings-card">
+            <h3>Komunikat podczas analizy</h3>
+            <p class="hint">Wybierz, ile miejsca zajmuje informacja o pracy OKStudy.</p>
+            <label for="activityIndicator">Widoczność komunikatu</label>
+            <select id="activityIndicator">
+              <option value="full">Pełny komunikat i przycisk „Przerwij”</option>
+              <option value="minimal">Małe animowane kropki</option>
+              <option value="off">Wyłączony — tylko krótki „!” przy błędzie</option>
+            </select>
+            <div id="activityPreview" class="activity-demo" aria-hidden="true">
+              <span id="activityFull" class="activity-full">Analizuję zadanie… <small>Przerwij</small></span>
+              <span id="activityMinimal" class="activity-mini" hidden><i></i><i></i><i></i></span>
+              <span id="activityOff" class="activity-off" hidden
+                >Bez komunikatu podczas analizy <b>!</b></span
+              >
+            </div>
+            <p class="hint" id="activityHint"></p>
+          </div>
+          <div class="settings-card">
+            <div class="section-title">
+              <h3>Głos i tempo</h3>
+              <span class="tag">ODSŁUCH</span>
+            </div>
+            <label for="voiceEngine">Źródło głosu</label>
+            <select id="voiceEngine">
+              <option value="system">Przeglądarka / system — bez opłat API</option>
+              <option value="openai">OpenAI — osobno płatne API</option>
+            </select>
+            <div id="systemSpeechFields" class="voice-fields">
+              <label for="systemVoice">Dostępny głos</label
+              ><select id="systemVoice">
+                <option value="">Automatyczny polski głos</option>
+              </select>
+              <p class="hint">Lista i jakość głosów zależą od przeglądarki oraz systemu.</p>
+            </div>
+            <div id="openaiSpeechFields" class="voice-fields" hidden>
+              <label for="openaiVoice">Głos OpenAI</label
+              ><select id="openaiVoice"></select>
+              <label for="speechKey">Klucz API OpenAI do odczytu</label
+              ><input
+                id="speechKey"
+                type="password"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="sk-…"
+              />
+              <p class="hint">
+                To ten sam klucz, który możesz zapisać dla odpowiedzi OpenAI. Działa także przy odpowiedziach
+                z innych modeli lub z planu ChatGPT.
+              </p>
+              <p class="voice-disclosure">
+                Głos generowany przez AI. Każdy odczyt i próbka korzystają z płatnego API OpenAI, poza
+                abonamentem ChatGPT. Tekst odczytu jest wysyłany do OpenAI.
+              </p>
+            </div>
+            <label for="speechRate">Tempo odczytu <output id="speechRateValue"></output></label
+            ><input id="speechRate" type="range" min="70" max="140" step="5" />
+            <div class="row wrap">
+              <button id="testVoice" class="button secondary" type="button">Posłuchaj przykładu</button
+              ><button id="stopVoice" class="text-button" type="button">Zatrzymaj głos</button>
+            </div>
+            <p class="hint">
+              Do 4000 znaków na jeden odczyt. Automatyczny odczyt włączysz wyżej, wybierając „Tekst i głos”
+              lub „Tylko głos”.
+            </p>
+            <div class="status" id="speechStatus" role="status" hidden></div>
           </div>
         </section>
         <section id="section-shortcuts" class="settings-section" hidden>

@@ -1,4 +1,4 @@
-import { PROVIDERS, cropBounds } from './config.js';
+import { PROVIDERS, cropBounds, normalizeSettings } from './config.js';
 import {
   initializeStorage,
   getSettings,
@@ -10,10 +10,18 @@ import {
 } from './storage.js';
 import { requestAI } from './providers.js';
 import { nativeRequest } from './native.js';
+import { expressResult } from './text.js';
+import { startRemoteSpeech, stopRemoteSpeech, finishRemoteSpeech } from './audio.js';
 
 const jobs = new Map(),
   images = new Map(),
   stateWrites = new Map();
+const badgeTimers = new Map();
+async function clearBadge(tabId) {
+  clearTimeout(badgeTimers.get(tabId));
+  badgeTimers.delete(tabId);
+  await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+}
 let shortcutSettings;
 let captureQueue = Promise.resolve(),
   lastCapture = 0;
@@ -67,6 +75,7 @@ function rememberImage(id, image) {
   while (images.size > 3) forgetImage(images.keys().next().value);
 }
 function makeJob(tabId) {
+  void stopRemoteSpeech(tabId).catch(() => {});
   jobs.get(tabId)?.controller.abort();
   const job = { id: crypto.randomUUID(), tabId, controller: new AbortController() };
   jobs.set(tabId, job);
@@ -136,9 +145,18 @@ async function markError(job, error) {
   await jobState(job, { status: 'error', error: text, entryId: job.entryId, auth: job.auth });
   if (!job.alive()) return;
   await chrome.action.setBadgeText({ tabId: job.tabId, text: '!' }).catch(() => {});
-  await tell(job.tabId, { type: 'notice', text, error: true });
+  const settings = job.settings || (await getSettings());
+  if (settings.activityIndicator !== 'full') {
+    clearTimeout(badgeTimers.get(job.tabId));
+    const timer = setTimeout(() => {
+      if (badgeTimers.get(job.tabId) === timer) void clearBadge(job.tabId);
+    }, 1500);
+    badgeTimers.set(job.tabId, timer);
+  }
+  await tell(job.tabId, { type: 'notice', text, error: true, settings });
 }
 async function infer(job, settings, entry, image) {
+  job.settings = settings;
   job.entryId = entry.id;
   job.auth = entry.auth;
   const signal = AbortSignal.any([job.controller.signal, AbortSignal.timeout(120000)]);
@@ -149,9 +167,11 @@ async function infer(job, settings, entry, image) {
     internet: entry.internet,
     image,
     messages: entry.messages,
+    answerOnly: entry.answerOnly === true,
   };
   let lastWrite = 0;
   const partial = (text) => {
+    if (entry.mode === 'express' && entry.answerOnly) return;
     if (!job.alive() || Date.now() - lastWrite < 180) return;
     lastWrite = Date.now();
     void jobState(job, {
@@ -164,7 +184,7 @@ async function infer(job, settings, entry, image) {
   const started = Date.now();
   await jobState(job, { status: 'running', entryId: entry.id, text: '', mode: entry.mode });
   if (!job.alive()) return;
-  await tell(job.tabId, { type: 'working', jobId: job.id });
+  await tell(job.tabId, { type: 'working', jobId: job.id, settings });
   const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo().catch(() => {}), 20000);
   try {
     let result;
@@ -177,6 +197,7 @@ async function infer(job, settings, entry, image) {
       result = await requestAI(args, key, signal, partial);
     }
     if (!job.alive()) return;
+    if (entry.mode === 'express') result.text = expressResult(result.text, entry.answerOnly);
     const completed = {
       ...entry,
       messages: [...entry.messages, { role: 'assistant', text: result.text }],
@@ -189,22 +210,34 @@ async function infer(job, settings, entry, image) {
     if (image) rememberImage(entry.id, image);
     await jobState(job, { status: 'done', entryId: entry.id });
     if (!job.alive()) return;
-    await chrome.action.setBadgeText({ tabId: job.tabId, text: '' }).catch(() => {});
+    await clearBadge(job.tabId);
     await tell(job.tabId, { type: 'answer', text: result.text, settings, entryId: entry.id });
+    autoSpeak(completed, settings, job.tabId);
   } finally {
     clearInterval(keepAlive);
   }
+}
+function autoSpeak(entry, settings, tabId) {
+  if (settings.voice === 'off' || settings.voiceEngine !== 'openai') return;
+  const text = entry.messages.filter((m) => m.role === 'assistant').at(-1)?.text;
+  if (!text) return;
+  const spoken = entry.mode === 'express' ? text : text.match(/Wniosek:\s*([\s\S]+)/i)?.[1] || text;
+  void startRemoteSpeech(spoken, settings, { tabId, entryId: entry.id }).catch((error) =>
+    tell(tabId, { type: 'notice', text: error.message, error: true, speech: true, settings })
+  );
 }
 async function launch(tabId, kind, internetOverride, selectedText) {
   const job = makeJob(tabId);
   try {
     await ready;
     const settings = await getSettings();
+    job.settings = settings;
+    await clearBadge(tabId);
     const tab = await usableTab(tabId);
     await inject(tabId);
     await jobState(job, { status: 'preparing' });
     if (!job.alive()) return;
-    await tell(tabId, { type: 'prepare' });
+    await tell(tabId, { type: 'prepare', settings });
     if (!job.alive()) return;
     let image,
       text = '';
@@ -253,6 +286,7 @@ async function launch(tabId, kind, internetOverride, selectedText) {
       model,
       auth,
       mode: settings.mode,
+      answerOnly: settings.mode === 'express' && settings.expressAnswerOnly,
       internet: internetOverride ?? settings.internet,
       title: text ? text.slice(0, 90) : kind === 'region' ? 'Zaznaczone zadanie' : 'Zadanie z ekranu',
       source: kind,
@@ -296,9 +330,10 @@ async function followup(tabId, id, question) {
 async function cancel(tabId) {
   jobs.get(tabId)?.controller.abort();
   jobs.delete(tabId);
+  await stopRemoteSpeech(tabId);
   await tell(tabId, { type: 'cancel' });
   await state(tabId, { status: 'idle' });
-  await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+  await clearBadge(tabId);
 }
 async function snapshot(tabId) {
   const settings = await getSettings(),
@@ -319,6 +354,11 @@ async function snapshot(tabId) {
 }
 chrome.runtime.onMessage.addListener((request, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return;
+  if (request.target === 'okstudy-audio') return;
+  if (sender.url === chrome.runtime.getURL('audio.html') && request.type === 'speech.finished') {
+    void finishRemoteSpeech(request.id, request.error).then(() => respond({ ok: true }));
+    return true;
+  }
   const trusted = trustedPage(sender),
     fromContent = sender.tab && sender.frameId === 0;
   if (!trusted && !(fromContent && ['cancel', 'openPanel'].includes(request.type))) return;
@@ -337,6 +377,35 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
         return snapshot(tabId);
       case 'settings.save':
         return updateSettings(request.settings || {}, request.keys);
+      case 'speech.stop':
+        await stopRemoteSpeech();
+        return {};
+      case 'speech.preview': {
+        if (sender.url?.split('#')[0] !== chrome.runtime.getURL('options.html'))
+          throw new Error('Otwórz ustawienia głosu.');
+        const settings = normalizeSettings({
+          ...(await getSettings()),
+          openaiVoice: request.voice,
+          speechRate: request.rate,
+        });
+        return startRemoteSpeech(
+          'Cześć! To przykładowy głos OKStudy. Odpowiedź to: Dynamika Techniczna.',
+          settings,
+          { preview: true },
+          typeof request.key === 'string' ? request.key.slice(0, 4096) : undefined
+        );
+      }
+      case 'speech.read': {
+        const settings = await getSettings();
+        if (settings.voiceEngine !== 'openai') throw new Error('Wybierz głos OpenAI w ustawieniach.');
+        const entry = (await getHistory()).find((e) => e.id === request.entryId);
+        if (!entry) throw new Error('Tej odpowiedzi nie ma już w historii.');
+        const text = entry.messages.filter((m) => m.role === 'assistant').at(-1)?.text;
+        return startRemoteSpeech(text, settings, {
+          tabId: Number.isInteger(tabId) ? tabId : undefined,
+          entryId: entry.id,
+        });
+      }
       case 'launch':
         await usableTab(tabId);
         void launch(tabId, ['region', 'screen', 'text'].includes(request.kind) ? request.kind : 'screen');
@@ -350,6 +419,7 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
         await cancel(tabId);
         return {};
       case 'history.delete':
+        await stopRemoteSpeech();
         for (const job of jobs.values())
           if (!request.id || job.entryId === request.id) await cancel(job.tabId);
         if (request.id) forgetImage(request.id);
@@ -446,6 +516,7 @@ chrome.commands.onCommand.addListener((command, commandTab) => {
         settings: s,
         entryId: shownEntry.id,
       });
+      autoSpeak(shownEntry, s, tab.id);
     }
   })().catch((error) => {
     if (commandTab?.id) void state(commandTab.id, { status: 'error', error: error.message });
@@ -464,10 +535,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   void launch(tab.id, 'text', undefined, info.selectionText);
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
+  void stopRemoteSpeech(tabId);
+  void clearBadge(tabId);
   jobs.get(tabId)?.controller.abort();
   jobs.delete(tabId);
   void chrome.storage.session.remove(jobKey(tabId));
 });
 chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.status === 'loading') void stopRemoteSpeech(tabId);
   if (change.status === 'loading' && jobs.has(tabId)) void cancel(tabId);
 });

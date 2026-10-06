@@ -9,21 +9,24 @@ Rozszerzenie Chrome do nauki z Gemini, Claude, OpenAI lub Grok. Własna identyfi
 ## Co potrafi
 
 - Wybór fragmentu ekranu z podglądem i potwierdzeniem, analiza widocznego ekranu lub zaznaczonego tekstu.
-- **Wyjaśnij** — rozwiązanie krok po kroku; **Podpowiedz** — kolejne wskazówki na żądanie; **Express** — krótka odpowiedź na stronie.
+- **Wyjaśnij** — rozwiązanie krok po kroku; **Podpowiedz** — kolejne wskazówki na żądanie; **Express** — krótka odpowiedź na stronie, z opcją samego wyniku bez wyjaśnienia.
 - Panel boczny: odpowiedź na żywo, Markdown, wzory matematyczne, źródła, dopytywanie, kopiowanie i eksport notatki `.md`.
 - Historia do 40 zadań, wyszukiwanie również po treści odpowiedzi, usuwanie pojedynczych zadań lub całej historii.
-- Głos: sam tekst, tekst i odczyt lub sam odczyt. Express ma regulowaną pozycję, wielkość tekstu, widoczność i czas.
+- Głos: sam tekst, tekst i odczyt lub sam odczyt. Wybór głosu systemowego albo opcjonalnego głosu OpenAI przez osobno płatne API, regulacja tempa i próbka.
+- Express ma regulowaną pozycję, wielkość tekstu, widoczność i czas. Komunikat analizy: pełny, małe animowane kropki albo wyłączony.
 - Szybka zmiana dostawcy i modelu bezpośrednio pod ikoną rozszerzenia.
 - Klucze API czterech dostawców albo dostępny plan ChatGPT przez opcjonalny moduł na Windows.
 
 ## Instalacja i aktualizacja
 
-1. Rozpakuj paczkę `OKStudy-2.0.1.zip`. Folder **OKStudy** zawiera `manifest.json`.
+1. Rozpakuj paczkę `OKStudy-2.0.2.zip`. Folder **OKStudy** zawiera `manifest.json`.
 2. Otwórz `chrome://extensions`, włącz **Tryb dewelopera** i wybierz **Załaduj rozpakowane**.
 3. Wskaż folder OKStudy i przypnij ikonę do paska przeglądarki.
 4. W ustawieniach wybierz dostawcę i sposób połączenia, a następnie **Zapisz ustawienia**.
 
 Przy aktualizacji istniejącej instalacji zachowaj jej folder i przeładuj rozszerzenie po zastąpieniu plików. Nowa ścieżka może oznaczać nowy identyfikator rozszerzenia i oddzielne dane. Ustawienia z wersji 1.x, klucze i wcześniej wybrane modele migrują automatycznie. Stary model pozostaje dostępny jako własny identyfikator; jeśli dostawca go wycofał, wybierz nowy w ustawieniach.
+
+Po aktualizacji odśwież również strony z zadaniami, aby uruchomiły nowy skrypt odpowiedzi. Wersja 2.0.2 dodaje uprawnienie `offscreen` do odtwarzacza głosu. Jeżeli korzystasz z planu ChatGPT, uruchom ponownie instalator modułu z nowej paczki — zawiera on instrukcje trybu „Tylko odpowiedź”. Aktualizacja modułu zachowuje zapisane połączenie z kontem.
 
 Wymagany jest Chrome 116+ lub przeglądarka Chromium z obsługą panelu bocznego. Strony ustawień przeglądarki i sklepu rozszerzeń są ograniczone przez przeglądarkę.
 
@@ -72,9 +75,22 @@ Podczas wyboru fragmentu przeciągnij ramkę i kliknij **Analizuj fragment**. Ob
 
 Skróty mogą kolidować z innymi rozszerzeniami. Ich faktyczne przypisania są widoczne w ustawieniach OKStudy; można je zmienić w `chrome://extensions/shortcuts`. Dawny „zapasowy skrót analizy” uruchamia teraz zaznaczenie fragmentu.
 
+## Odpowiedzi, komunikaty i głos
+
+W **Ustawienia → Odpowiedzi i wygląd**:
+
+- **Express → Tylko odpowiedź, bez wyjaśnień** zwraca samo hasło lub wynik (np. `Dynamika Techniczna`) albo samą literę odpowiedzi (np. `D`). Przy kilku pytaniach zachowuje ich oznaczenia. Wyłączenie opcji przywraca krótkie wyjaśnienie. Express usuwa znaczniki Markdown, zachowując zwykłe znaki matematyczne.
+- **Komunikat podczas analizy** pozwala wybrać pełny komunikat z przyciskiem, małe animowane kropki lub brak komunikatu. Kliknięcie kropek przerywa analizę. W dwóch dyskretnych wariantach błąd pokazuje mały `!` przez 1,5 sekundy; szczegóły pozostają w panelu. Alt+K działa również przy wyłączonym komunikacie.
+- **Głos i tempo** pozwala wybrać głos dostępny w systemie/przeglądarce albo głos OpenAI, tempo 0,70–1,40× i odsłuchać próbkę. Automatyczny odczyt wymaga wybrania wyżej **Tekst i głos** lub **Tylko głos**. Przycisk głośnika w panelu uruchamia i zatrzymuje odczyt na żądanie. Jeden odczyt obejmuje do 4000 znaków.
+
+Głos OpenAI używa modelu `gpt-4o-mini-tts` i 13 dostępnych głosów, domyślnie Marin. Wymaga klucza API OpenAI, niezależnie od dostawcy odpowiedzi lub połączenia z planem ChatGPT. Możesz wpisać klucz w sekcji głosu; jest współdzielony z ustawieniami odpowiedzi OpenAI. **Każdy odczyt i próbka są rozliczane osobno przez API, poza abonamentem ChatGPT.** Tekst do odczytu trafia do OpenAI. Odtwarzany głos jest generowany przez AI. Błąd głosu pozostawia odpowiedź tekstową w historii; nie uruchamia innego płatnego połączenia.
+
+Dokumentacja: [generowanie mowy OpenAI](https://developers.openai.com/api/docs/guides/text-to-speech). Obecna dokumentacja [modeli i zapytań przez plan ChatGPT](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) nie udostępnia integracji tego odczytu przez abonament.
+
 ## Dane i prywatność
 
 - Treść zadania, obraz oraz kontekst rozmowy trafiają do wybranego dostawcy. Obowiązują jego zasady przetwarzania danych.
+- Po wybraniu głosu OpenAI tekst odczytu trafia dodatkowo do OpenAI, także przy odpowiedzi z innego modelu. Nagranie służy do bieżącego odtwarzania; rozszerzenie nie zapisuje go w historii ani plikach.
 - Klucze API pozostają w lokalnym magazynie rozszerzenia, poza synchronizacją Chrome. Skrypt działający na stronie nie ma dostępu do magazynu kluczy.
 - Moduł ChatGPT przechowuje własne poświadczenia w `%LOCALAPPDATA%\OKStudy\chatgpt.credentials`, zabezpieczone przez Windows DPAPI dla bieżącego użytkownika. Nie odczytuje sesji innych aplikacji. Odnawianie tokenów jest blokowane pomiędzy procesami, aby uniknąć równoczesnej rotacji.
 - Historia domyślnie żyje tylko w sesji rozszerzenia. Trwałe zapisywanie na tym urządzeniu można włączyć w ustawieniach.
@@ -90,6 +106,7 @@ npm run build
 npm test
 npx playwright install chromium
 npm run test:browser
+npm run test:presentation
 npm run package
 ```
 

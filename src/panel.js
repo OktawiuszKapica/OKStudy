@@ -1,4 +1,5 @@
 import { PROVIDERS, MODES, modelLabel, safeURL, USAGE_URL } from './config.js';
+import { createSystemSpeech } from './speech.js';
 import {
   $,
   send,
@@ -22,7 +23,37 @@ let tabId,
   seenJob,
   refreshTimer,
   refreshSequence = 0,
-  utterance;
+  speechSettings = {},
+  voiceState = 'idle';
+const speaker = createSystemSpeech((state, error) => {
+  voiceState = state;
+  $('speakAnswer').setAttribute(
+    'aria-label',
+    ['loading', 'playing'].includes(state) ? 'Zatrzymaj odczyt' : 'Przeczytaj odpowiedź'
+  );
+  status(error || '', state === 'error', 'speechStatus');
+});
+function remoteSpeechState(value = {}) {
+  if (speechSettings.voiceEngine !== 'openai') return;
+  voiceState = value.status || 'idle';
+  $('speakAnswer').setAttribute(
+    'aria-label',
+    ['loading', 'playing'].includes(voiceState) ? 'Zatrzymaj odczyt' : 'Przeczytaj odpowiedź'
+  );
+  status(
+    value.error ||
+      (value.status === 'loading'
+        ? 'Generuję głos OpenAI…'
+        : value.status === 'playing'
+          ? 'Odtwarzam głos wygenerowany przez AI.'
+          : ''),
+    value.status === 'error',
+    'speechStatus'
+  );
+}
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'session' && changes['okstudy.speech']) remoteSpeechState(changes['okstudy.speech'].newValue);
+});
 $('openSettings').onclick = () => chrome.runtime.openOptionsPage();
 function openEntry(e) {
   selectedId = e.id;
@@ -124,6 +155,13 @@ async function refresh() {
     data = await send('snapshot', { tabId });
   if (sequence !== refreshSequence) return;
   history = data.history;
+  speechSettings = data.settings;
+  $('speakAnswer').title =
+    speechSettings.voiceEngine === 'openai'
+      ? 'Przeczytaj przez OpenAI — płatne API, do 4000 znaków'
+      : 'Przeczytaj odpowiedź (do 4000 znaków)';
+  if (speechSettings.voiceEngine === 'openai')
+    remoteSpeechState((await chrome.storage.session.get('okstudy.speech'))['okstudy.speech']);
   applyTheme(data.settings.theme);
   document.documentElement.dataset.preference = data.settings.theme;
   const job = data.job,
@@ -202,29 +240,20 @@ $('copyAnswer').onclick = () =>
       status('Przeglądarka nie zezwoliła na kopiowanie. Zaznacz tekst odpowiedzi i skopiuj go ręcznie.', true)
     );
 $('exportAnswer').onclick = () => entry && downloadNote(entry);
-$('speakAnswer').onclick = () => {
+$('speakAnswer').onclick = async () => {
   if (!entry) return;
-  if (speechSynthesis.speaking) {
-    speechSynthesis.cancel();
-    $('speakAnswer').setAttribute('aria-label', 'Przeczytaj odpowiedź');
-    return;
+  try {
+    if (['playing', 'loading'].includes(voiceState) || speechSynthesis.speaking) {
+      speaker.stop();
+      await send('speech.stop');
+      return;
+    }
+    if (speechSettings.voiceEngine === 'openai') {
+      await send('speech.read', { entryId: entry.id, tabId });
+    } else speaker.speak(entry.messages.filter((m) => m.role === 'assistant').at(-1).text, speechSettings);
+  } catch (e) {
+    status(e.message, true, 'speechStatus');
   }
-  utterance = new SpeechSynthesisUtterance(
-    entry.messages
-      .filter((m) => m.role === 'assistant')
-      .at(-1)
-      .text.replace(/[*#`]/g, ' ')
-  );
-  utterance.lang = 'pl-PL';
-  utterance.voice = speechSynthesis.getVoices().find((v) => /^pl/i.test(v.lang)) || null;
-  utterance.onerror = (e) => {
-    if (!['canceled', 'interrupted'].includes(e.error))
-      status('Odczyt głosowy jest niedostępny w tej przeglądarce.', true);
-  };
-  utterance.onend = () => $('speakAnswer').setAttribute('aria-label', 'Przeczytaj odpowiedź');
-  speechSynthesis.resume();
-  speechSynthesis.speak(utterance);
-  $('speakAnswer').setAttribute('aria-label', 'Zatrzymaj odczyt');
 };
 $('deleteAnswer').onclick = async () => {
   if (!entry) return;
@@ -258,7 +287,7 @@ chrome.tabs.onActivated.addListener((info) => {
   seenJob = undefined;
   void refresh().catch((e) => status(e.message, true));
 });
-window.addEventListener('pagehide', () => speechSynthesis.cancel());
+window.addEventListener('pagehide', () => speaker.stop());
 void (async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   tabId = tab?.id;

@@ -12,6 +12,7 @@ const files = [
   'options.html',
   'popup.html',
   'panel.html',
+  'audio.html',
   'js',
   'icons',
   'assets',

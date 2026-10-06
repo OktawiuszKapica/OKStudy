@@ -1,8 +1,14 @@
 import { shortAnswer } from './config.js';
+import { createSystemSpeech } from './speech.js';
 
 if (!globalThis.__okstudyV2) {
   globalThis.__okstudyV2 = true;
-  let host, root, noteTimer, speechTimer, utterance, cancelSelection;
+  let host, root, noteTimer, cancelSelection;
+  let currentSettings = { activityIndicator: 'full' };
+  const speaker = createSystemSpeech((state, error) => {
+    if (state === 'error') errorNotice(error, currentSettings, true);
+  });
+  const feedbackCSS = `.mini{width:36px;height:28px;padding:0;border-radius:9px;max-height:none;overflow:visible;box-shadow:0 2px 9px #0003;display:grid;place-items:center}.mini button{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;width:100%;height:100%;cursor:pointer;border-radius:8px;gap:3px;color:#bcf35a;font:700 15px/1 system-ui}.mini button:focus-visible{outline:2px solid #bcf35a;outline-offset:3px}.dot{width:3px;height:3px;background:currentColor;border-radius:50%}.mini.error{width:24px;height:24px;border-color:#c87d64}.mini.error button{color:#ffc1a8}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}@media(prefers-reduced-motion:no-preference){.dot{animation:pulse 1.1s ease-in-out infinite}.dot:nth-child(2){animation-delay:.15s}.dot:nth-child(3){animation-delay:.3s}@keyframes pulse{0%,70%,100%{opacity:.3;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}}`;
   const css = `:host{all:initial;color-scheme:dark}*{box-sizing:border-box}button{font:600 13px/1.4 system-ui;cursor:pointer;border:1px solid #4b554e;border-radius:10px;padding:10px 14px;background:#222a28;color:#f1f2ea}button:focus-visible{outline:3px solid #bcf35a;outline-offset:3px}button:disabled{opacity:.4;cursor:default}.primary{background:#bcf35a;color:#121617;border-color:#bcf35a}.note{position:fixed;z-index:2147483647;right:20px;bottom:20px;max-width:min(400px,90vw);border:1px solid #4b554e;border-radius:14px;background:#121617;color:#f1f2ea;box-shadow:0 10px 40px #0005;padding:13px 16px;font:500 14px/1.6 system-ui;white-space:pre-wrap;overflow-wrap:anywhere;max-height:50vh;overflow:auto}.note button{margin:10px 6px 0 0}.error{border-color:#c87d64}.express{border:none;box-shadow:none;background:transparent;padding:4px;text-shadow:0 1px 3px #000;color:#e8eddc;max-width:min(460px,75vw);pointer-events:none}.selector{position:fixed;inset:0;z-index:2147483647;font:500 14px/1.5 system-ui;color:#f1f2ea;cursor:crosshair;touch-action:none;user-select:none}.freeze{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none}.selection{position:absolute;border:2px solid #bcf35a;box-shadow:0 0 0 99999px #07100bb3;pointer-events:none;border-radius:4px}.help,.toolbar{position:absolute;left:50%;transform:translateX(-50%);background:#121617;border:1px solid #4b554e;border-radius:14px;padding:12px 16px;box-shadow:0 6px 30px #0005;cursor:default;max-width:90vw}.help{top:18px;text-align:center}.help small{display:block;color:#b6c1b8;margin-top:3px}.toolbar{bottom:24px;display:flex;gap:8px;white-space:nowrap}.hidden{display:none}@media(prefers-reduced-motion:no-preference){.note{animation:enter .16s ease-out}@keyframes enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}}`;
   function ensureRoot() {
     if (host?.isConnected) return root;
@@ -10,55 +16,87 @@ if (!globalThis.__okstudyV2) {
     host.style.cssText = 'all:initial;position:static;';
     root = host.attachShadow({ mode: 'closed' });
     const style = document.createElement('style');
-    style.textContent = css;
+    style.textContent = css + feedbackCSS;
     root.append(style);
     document.documentElement.append(host);
     return root;
   }
   function clear() {
     clearTimeout(noteTimer);
-    ensureRoot().querySelector('.note')?.remove();
+    ensureRoot()
+      .querySelectorAll('.note')
+      .forEach((note) => note.remove());
   }
-  function notice(text, error = false, duration = 6000) {
-    clear();
+  function notice(text, error = false, duration = 6000, preserveAnswer = false) {
+    if (!preserveAnswer) clear();
     const note = document.createElement('div');
     note.className = `note${error ? ' error' : ''}`;
     note.setAttribute('role', error ? 'alert' : 'status');
     note.textContent = text;
     ensureRoot().append(note);
+    if (preserveAnswer) {
+      note.style.top = '12px';
+      note.style.bottom = 'auto';
+    }
     if (duration) noteTimer = setTimeout(() => note.remove(), duration);
     return note;
   }
   function stopSpeech() {
-    clearTimeout(speechTimer);
-    speechSynthesis.cancel();
-    utterance = null;
+    speaker.stop();
   }
-  function speak(text) {
-    stopSpeech();
-    speechTimer = setTimeout(
-      () => {
-        utterance = new SpeechSynthesisUtterance(text.replace(/[*#`]/g, ' ').slice(0, 1200));
-        utterance.lang = 'pl-PL';
-        utterance.voice = speechSynthesis.getVoices().find((v) => /^pl/i.test(v.lang)) || null;
-        utterance.onerror = (e) => {
-          if (!['canceled', 'interrupted'].includes(e.error))
-            notice('Odczyt głosowy jest niedostępny. Odpowiedź znajdziesz w panelu OKStudy.', true);
-        };
-        speechSynthesis.resume();
-        speechSynthesis.speak(utterance);
-      },
-      speechSynthesis.getVoices().length ? 60 : 250
-    );
+  function errorNotice(text, settings = currentSettings, preserveAnswer = false) {
+    if (settings.activityIndicator === 'full') return notice(text, true, 6000, preserveAnswer);
+    const n = notice('', true, 1500, preserveAnswer);
+    n.classList.add('mini');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = '!';
+    b.title = text;
+    b.setAttribute('aria-label', `${text} Otwórz panel OKStudy.`);
+    b.onclick = () => chrome.runtime.sendMessage({ type: 'openPanel' }).catch(() => {});
+    const accessible = document.createElement('span');
+    accessible.className = 'sr-only';
+    accessible.textContent = text;
+    n.append(b, accessible);
+    return n;
+  }
+  function working(settings = currentSettings) {
+    clear();
+    currentSettings = settings;
+    if (settings.activityIndicator === 'off') return;
+    const minimal = settings.activityIndicator === 'minimal';
+    const n = notice(minimal ? '' : 'OKStudy analizuje zadanie…', false, 0);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Przerwij analizę');
+    b.title = 'Analizuję zadanie. Kliknij, aby przerwać.';
+    b.onclick = () => chrome.runtime.sendMessage({ type: 'cancel' }).catch(() => {});
+    if (minimal) {
+      n.classList.add('mini');
+      n.setAttribute('aria-label', 'OKStudy analizuje zadanie');
+      for (let i = 0; i < 3; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.setAttribute('aria-hidden', 'true');
+        b.append(dot);
+      }
+    } else {
+      b.textContent = 'Przerwij';
+      n.append(document.createElement('br'));
+    }
+    n.append(b);
   }
   function showAnswer(text, settings) {
     clear();
-    if (settings.voice !== 'off')
-      speak(
-        settings.mode === 'express' ? shortAnswer(text) : text.match(/Wniosek:\s*([\s\S]+)/i)?.[1] || text
+    currentSettings = settings;
+    if (settings.voice !== 'off' && settings.voiceEngine !== 'openai')
+      speaker.speak(
+        settings.mode === 'express' ? shortAnswer(text) : text.match(/Wniosek:\s*([\s\S]+)/i)?.[1] || text,
+        settings
       );
     if (settings.voice === 'only') return;
     if (settings.mode !== 'express') {
+      if (settings.activityIndicator !== 'full') return;
       const n = notice('Odpowiedź jest gotowa.', false, 12000);
       const b = document.createElement('button');
       b.textContent = 'Otwórz wyjaśnienie';
@@ -246,6 +284,7 @@ if (!globalThis.__okstudyV2) {
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (sender.id !== chrome.runtime.id) return;
     if (message.type === 'prepare') {
+      currentSettings = message.settings || currentSettings;
       cancelSelection?.();
       clear();
       stopSpeech();
@@ -265,14 +304,14 @@ if (!globalThis.__okstudyV2) {
       return true;
     }
     if (message.type === 'working') {
-      const n = notice('OKStudy analizuje zadanie…', false, 0);
-      const b = document.createElement('button');
-      b.textContent = 'Przerwij';
-      b.onclick = () => chrome.runtime.sendMessage({ type: 'cancel' });
-      n.append(document.createElement('br'), b);
+      working(message.settings);
     }
     if (message.type === 'answer') showAnswer(message.text, message.settings);
-    if (message.type === 'notice') notice(message.text, message.error);
+    if (message.type === 'notice') {
+      if (message.error)
+        errorNotice(message.text, message.settings || currentSettings, message.speech === true);
+      else notice(message.text);
+    }
     if (message.type === 'copy') void copy(message.text);
     if (message.type === 'cancel') {
       cancelSelection?.();
@@ -280,4 +319,5 @@ if (!globalThis.__okstudyV2) {
       stopSpeech();
     }
   });
+  window.addEventListener('pagehide', stopSpeech);
 }

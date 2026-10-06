@@ -7,6 +7,7 @@ npm ci
 npm run check
 npx playwright install chromium
 npm run test:browser
+npm run test:presentation
 npm run package
 ```
 
@@ -17,6 +18,12 @@ Testy modułu ChatGPT obejmują callback OAuth, podpis i najważniejsze roszczen
 Testy klienta Native Messaging sprawdzają brak funkcji mimo nadanej zgody, rozróżnianie błędów instalacji i dostępu oraz ponowną próbę po zainstalowaniu modułu. Osobny test parsuje plik instalatora w Windows PowerShell 5, aby wykryć problemy z kodowaniem polskich znaków.
 
 Test przeglądarkowy ładuje rzeczywisty manifest MV3 do osobnego profilu Chromium. Dostawcę AI zastępuje kontrolowana odpowiedź w service workerze. Test nie używa płatnego API. Raport, eksport i zrzuty interfejsu trafiają do `artifacts/browser/`.
+
+Test `test:presentation` sprawdza nowe ustawienia i odpowiedzi w prawdziwym skrypcie strony z zamkniętym Shadow DOM: usuwanie gwiazdek, dokładnie `D` oraz `Dynamika Techniczna`, trzy warianty komunikatu, kliknięcie kropek, błąd znikający po 1,5 sekundy i zachowanie tekstu przy awarii odczytu. API głosowe zastępuje syntetyczna odpowiedź z trzysekundowym cichym nagraniem WAV; rzeczywisty odtwarzacz `offscreen` dekoduje je i zgłasza koniec. Sprawdzane są też odczyt automatyczny, tryb „Tylko głos”, próbka, odczyt z panelu oraz anulowanie podczas generowania. Strona zadania ma `media-src 'none'`, aby zweryfikować odtwarzanie niezależne od jej ograniczeń. Raport i zrzuty: `artifacts/presentation/`. Jakość i dostępność rzeczywistych głosów OpenAI wymagają oddzielnego odsłuchu z kluczem API.
+
+Testy Node obejmują dodatkowo format krótkich odpowiedzi, instrukcje wszystkich dostawców, zachowanie znaków matematycznych, limit długości odczytu, wybór i anulowanie głosu systemowego, osobne poświadczenia API odczytu, brak automatycznej zamiany konta ChatGPT na API i zachowanie odtwarzania przy ponownym uruchomieniu service workera.
+
+Weryfikacja wersji **2.0.2** z 6 października 2026: **32 testy Node, 22 kontrole dotychczasowych funkcji, 23 kontrole odpowiedzi i głosu oraz 7 kontroli Native Messaging — wszystkie zakończone powodzeniem**. Łącznie 52 kontrole przeglądarkowe. Odtwarzacz sprawdzono na nagraniu testowym; nie wykonywano płatnych wywołań ani rzeczywistego logowania na konto użytkownika.
 
 Weryfikacja wersji 2.0.1 z 6 października 2026: **25 testów Node oraz 22 sprawdzenia interfejsu — wszystkie zakończone powodzeniem**. Test przeglądarkowy obejmuje uprawnienie `activeTab`, blokadę dostępu skryptu strony do kluczy, zatwierdzanie i anulowanie kadru, dopytywanie, wzory, eksport, wyszukiwanie historii, przerwane strumienie, zastąpienie analizy nową oraz oczyszczanie odpowiedzi z niebezpiecznego HTML. Układ sprawdzono przy szerokościach 1280, 400, 390 i 320 px. Akcja paska jest uruchamiana przez CDP na testowej karcie; skróty przeglądarki wymagają osobnej próby ręcznej.
 
@@ -39,5 +46,6 @@ Automatyczne testy nie zastępują próby z kontami dostawców. Osobno trzeba po
 1. Faktyczne logowanie ChatGPT po instalacji modułu, dostęp do modeli na koncie i jedno zadanie z obrazem.
 2. Rzeczywiste odpowiedzi i wyszukiwanie dla używanych kont API.
 3. Skróty zarejestrowane przez konkretną przeglądarkę oraz dostępność polskiego głosu.
+4. Odsłuch rzeczywistego nagrania OpenAI i naliczanie użycia na koncie API; testy automatyczne nie pobierają płatnych nagrań.
 
 Publikacja w sklepie lub GitHub Releases nie jest częścią lokalnego pakowania.

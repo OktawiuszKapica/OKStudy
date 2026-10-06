@@ -65,6 +65,30 @@ export function normalizeSettings(raw = {}) {
     expressSize: Math.min(24, Math.max(11, Number(raw.expressSize) || 14)),
     expressOpacity: Math.min(1, Math.max(0.25, Number(raw.expressOpacity) || 0.85)),
     expressDuration: Math.min(30, Math.max(3, Number(raw.expressDuration) || 8)),
+    expressAnswerOnly: raw.expressAnswerOnly === true,
+    activityIndicator: ['full', 'minimal', 'off'].includes(raw.activityIndicator)
+      ? raw.activityIndicator
+      : 'full',
+    systemVoice: typeof raw.systemVoice === 'string' ? raw.systemVoice.slice(0, 500) : '',
+    speechRate: Math.min(1.4, Math.max(0.7, Number(raw.speechRate) || 1)),
+    voiceEngine: raw.voiceEngine === 'openai' ? 'openai' : 'system',
+    openaiVoice: [
+      'marin',
+      'cedar',
+      'coral',
+      'alloy',
+      'ash',
+      'ballad',
+      'echo',
+      'fable',
+      'nova',
+      'onyx',
+      'sage',
+      'shimmer',
+      'verse',
+    ].includes(raw.openaiVoice)
+      ? raw.openaiVoice
+      : 'marin',
     openaiAuth: raw.openaiAuth === 'chatgpt' ? 'chatgpt' : 'api',
     chatgptModel: typeof raw.chatgptModel === 'string' ? raw.chatgptModel.slice(0, 120) : '',
   };
@@ -78,10 +102,7 @@ export const safeURL = (value) => {
     return null;
   }
 };
-export function shortAnswer(text) {
-  const answer = String(text).match(/ODPOWIED[ŹZ]:\s*(.+)/i)?.[1];
-  return (answer || String(text).replace(/^TYP:.*\n?/im, '')).trim();
-}
+export { shortAnswer } from './text.js';
 export function cropBounds(rect, imageWidth, imageHeight) {
   const fields = ['x', 'y', 'width', 'height', 'viewportWidth', 'viewportHeight'];
   if (
