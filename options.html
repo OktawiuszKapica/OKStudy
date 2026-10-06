@@ -1,578 +1,346 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-  <meta charset="UTF-8">
-  <title>OKStudy - Ustawienia</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background:
-        radial-gradient(900px circle at 50% -10%, rgba(34, 197, 94, 0.18), transparent 55%),
-        radial-gradient(700px circle at 90% 110%, rgba(59, 130, 246, 0.12), transparent 50%),
-        #0b1120;
-      color: #e2e8f0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px 0;
-    }
-    .container {
-      width: 420px;
-      max-width: 92vw;
-      padding: 36px 32px;
-      background: rgba(15, 23, 42, 0.55);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
-      backdrop-filter: blur(6px);
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    .logo {
-      width: 64px;
-      height: 64px;
-      background: rgba(34, 197, 94, 0.15);
-      border: 1px solid rgba(34, 197, 94, 0.3);
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 16px;
-      font-size: 28px;
-    }
-    h1 {
-      font-size: 24px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .subtitle {
-      font-size: 13px;
-      color: #22c55e;
-      font-style: italic;
-    }
-    .card {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 16px;
-    }
-    label {
-      display: block;
-      font-size: 12px;
-      font-weight: 500;
-      color: #94a3b8;
-      margin-bottom: 8px;
-    }
-    input {
-      width: 100%;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      color: #e2e8f0;
-      font-size: 14px;
-      transition: border-color 0.2s;
-    }
-    input:focus {
-      outline: none;
-      border-color: #22c55e;
-    }
-    input::placeholder {
-      color: #475569;
-    }
-    .hint {
-      font-size: 11px;
-      color: #64748b;
-      margin-top: 8px;
-    }
-    .hint a {
-      color: #22c55e;
-      text-decoration: none;
-    }
-    .hint a:hover {
-      text-decoration: underline;
-    }
-    .model-selector {
-      display: flex;
-      gap: 8px;
-    }
-    .model-option {
-      flex: 1;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.2s;
-      color: #94a3b8;
-    }
-    .model-option:hover {
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-    .model-option.active {
-      border-color: #22c55e;
-      background: rgba(34, 197, 94, 0.1);
-      color: #e2e8f0;
-    }
-    .model-icon {
-      display: block;
-      font-size: 20px;
-      margin-bottom: 4px;
-    }
-    .model-name {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .model-desc {
-      display: block;
-      font-size: 10px;
-      color: #64748b;
-      margin-top: 2px;
-    }
-    .model-option.active .model-desc {
-      color: #22c55e;
-    }
-    .pos-grid {
-      display: flex;
-      gap: 8px;
-    }
-    .pos-btn {
-      flex: 1;
-      padding: 12px 0;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      color: #94a3b8;
-      font-size: 18px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .pos-btn:hover { border-color: rgba(255, 255, 255, 0.25); }
-    .pos-btn.active {
-      border-color: #22c55e;
-      background: rgba(34, 197, 94, 0.12);
-      color: #22c55e;
-    }
-    #posCard.dimmed { opacity: 0.45; }
-    #updateBanner {
-      display: block;
-      margin: -8px 0 20px;
-      padding: 11px 14px;
-      border-radius: 10px;
-      background: rgba(34, 197, 94, 0.15);
-      border: 1px solid rgba(34, 197, 94, 0.4);
-      color: #22c55e;
-      font-size: 12px;
-      font-weight: 600;
-      text-align: center;
-      text-decoration: none;
-      transition: background 0.15s;
-    }
-    #updateBanner:hover { background: rgba(34, 197, 94, 0.25); }
-    /* Provider picker: 2x2 grid with real logos */
-    .provider-grid { flex-wrap: wrap; }
-    .provider-option { flex: 1 1 calc(50% - 4px); min-width: 0; }
-    .provider-logo {
-      display: block;
-      width: 26px;
-      height: 26px;
-      object-fit: contain;
-      margin: 0 auto 6px;
-    }
-    /* ChatGPT logo is black-on-white; give it a light chip so it shows on dark UI */
-    .provider-option[data-provider="openai"] .provider-logo,
-    .provider-option[data-provider="grok"] .provider-logo {
-      background: #fff;
-      border-radius: 6px;
-      padding: 3px;
-    }
-    button {
-      width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-    }
-    .status {
-      text-align: center;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-top: 16px;
-      display: none;
-    }
-    .status.success {
-      display: block;
-      background: rgba(34, 197, 94, 0.2);
-      color: #22c55e;
-    }
-    .usage {
-      margin-top: 24px;
-      padding: 16px;
-      background: rgba(59, 130, 246, 0.1);
-      border: 1px solid rgba(59, 130, 246, 0.2);
-      border-radius: 8px;
-    }
-    .usage h3 {
-      font-size: 13px;
-      font-weight: 600;
-      color: #60a5fa;
-      margin-bottom: 8px;
-    }
-    .usage p {
-      font-size: 12px;
-      color: #94a3b8;
-      line-height: 1.6;
-    }
-    .shortcut {
-      display: inline-block;
-      background: rgba(255, 255, 255, 0.1);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 12px;
-      color: #e2e8f0;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 24px;
-      font-size: 10px;
-      color: #475569;
-    }
-    .footer a {
-      color: #64748b;
-      text-decoration: none;
-    }
-    .footer a:hover {
-      color: #22c55e;
-    }
-    .github-icon {
-      width: 14px;
-      height: 14px;
-      vertical-align: middle;
-      margin-left: 4px;
-      opacity: 0.7;
-    }
-    .brand-logo {
-      width: 230px;
-      max-width: 78%;
-      height: auto;
-      display: block;
-      margin: 0 auto 14px;
-      filter: drop-shadow(0 6px 20px rgba(34, 197, 94, 0.18));
-    }
-    /* Portfolio promo - subtle highlight card */
-    .promo {
-      position: relative;
-      margin-top: 28px;
-      padding: 22px 20px;
-      border-radius: 14px;
-      background:
-        linear-gradient(180deg, rgba(34, 197, 94, 0.10), rgba(255, 255, 255, 0.02));
-      border: 1px solid rgba(34, 197, 94, 0.22);
-      text-align: center;
-      overflow: hidden;
-    }
-    .promo::before {
-      content: "";
-      position: absolute;
-      top: -40px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 220px;
-      height: 80px;
-      background: radial-gradient(closest-side, rgba(34, 197, 94, 0.35), transparent);
-      pointer-events: none;
-    }
-    .promo-eyebrow {
-      position: relative;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: #22c55e;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-    .promo-title {
-      position: relative;
-      font-size: 16px;
-      font-weight: 600;
-      color: #f1f5f9;
-      margin-bottom: 16px;
-    }
-    .promo-title strong {
-      color: #22c55e;
-      font-weight: 700;
-    }
-    .promo-btn {
-      display: block;
-      width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-      color: #ffffff;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .promo-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-    }
-    .promo-links {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .promo-link {
-      position: relative;
-      flex: 1;
-      padding: 10px;
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      color: #94a3b8;
-      font-size: 12px;
-      font-weight: 500;
-      text-decoration: none;
-      transition: border-color 0.15s, color 0.15s, background 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-    .promo-link:hover {
-      border-color: rgba(34, 197, 94, 0.45);
-      background: rgba(34, 197, 94, 0.08);
-      color: #e2e8f0;
-    }
-    /* Support (beer) - collapsible so the QR stays hidden until clicked */
-    .beer {
-      position: relative;
-      margin-top: 8px;
-      border-radius: 8px;
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      overflow: hidden;
-    }
-    .beer > summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 10px;
-      font-size: 12px;
-      font-weight: 500;
-      color: #94a3b8;
-      text-align: center;
-      transition: color 0.15s, background 0.15s;
-      user-select: none;
-    }
-    .beer > summary::-webkit-details-marker { display: none; }
-    .beer > summary:hover {
-      color: #fcd34d;
-      background: rgba(251, 191, 36, 0.08);
-    }
-    .beer[open] > summary {
-      color: #fcd34d;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .beer-body {
-      padding: 16px 14px 18px;
-      text-align: center;
-    }
-    .beer-joke {
-      font-size: 12px;
-      color: #94a3b8;
-      line-height: 1.55;
-      margin-bottom: 14px;
-    }
-    .beer-qr {
-      width: 180px;
-      max-width: 70%;
-      height: auto;
-      border-radius: 10px;
-      display: block;
-      margin: 0 auto 10px;
-    }
-    .beer-handle {
-      font-size: 13px;
-      font-weight: 700;
-      color: #e2e8f0;
-      letter-spacing: 0.3px;
-    }
-    .beer-hint {
-      font-size: 10px;
-      color: #64748b;
-      margin-top: 4px;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <img src="logo.png" alt="OKStudy" class="brand-logo">
-      <p class="subtitle">Make studying OK again</p>
-    </div>
-
-    <a id="updateBanner" href="https://github.com/OktawiuszKapica/OKStudy/releases/latest" target="_blank" rel="noopener" style="display:none;">
-      🎉 Dostępna nowa wersja <span id="updateVer"></span> - kliknij, aby pobrać
-    </a>
-
-    <div class="card">
-      <label>Dostawca AI</label>
-      <div class="model-selector provider-grid">
-        <button class="model-option provider-option active" data-provider="gemini">
-          <img class="provider-logo" src="gemini.png" alt="">
-          <span class="model-name">Gemini</span>
-          <span class="model-desc">darmowy</span>
-        </button>
-        <button class="model-option provider-option" data-provider="claude">
-          <img class="provider-logo" src="claude.png" alt="">
-          <span class="model-name">Claude</span>
-          <span class="model-desc">płatny</span>
-        </button>
-        <button class="model-option provider-option" data-provider="openai">
-          <img class="provider-logo" src="chatgpt.jpg" alt="">
-          <span class="model-name">ChatGPT</span>
-          <span class="model-desc">płatny</span>
-        </button>
-        <button class="model-option provider-option" data-provider="grok">
-          <img class="provider-logo" src="grok.webp" alt="">
-          <span class="model-name">Grok</span>
-          <span class="model-desc">płatny</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="card">
-      <label id="keyLabel" for="apiKey">Klucz API Gemini</label>
-      <input type="password" id="apiKey" placeholder="AIza...">
-      <p class="hint" id="keyHint"></p>
-    </div>
-
-    <div class="card">
-      <label>Model AI</label>
-      <div class="model-selector" id="modelSelector"></div>
-      <p class="hint" id="usageLine" style="display:none;"></p>
-    </div>
-
-    <div class="card">
-      <label>Tryb działania</label>
-      <div class="model-selector">
-        <button class="model-option mode-option active" data-mode="tutor">
-          <span class="model-icon">🎓</span>
-          <span class="model-name">Tłumacz</span>
-          <span class="model-desc">Wyjaśnia krok po kroku</span>
-        </button>
-        <button class="model-option mode-option" data-mode="express">
-          <span class="model-icon">⚡</span>
-          <span class="model-name">Express</span>
-          <span class="model-desc">Sama odpowiedź, dyskretnie</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="card" id="posCard">
-      <label>Pozycja odpowiedzi (tryb Express)</label>
-      <div class="pos-grid">
-        <button class="pos-btn" data-pos="tl" title="Lewy górny">↖</button>
-        <button class="pos-btn" data-pos="tr" title="Prawy górny">↗</button>
-        <button class="pos-btn" data-pos="bc" title="Środek dołu">▼</button>
-        <button class="pos-btn" data-pos="bl" title="Lewy dolny">↙</button>
-        <button class="pos-btn active" data-pos="br" title="Prawy dolny">↘</button>
-      </div>
-      <p class="hint">Gdzie ma pojawiać się dyskretna odpowiedź na stronie.</p>
-    </div>
-
-    <div class="card">
-      <label>Czytanie na głos</label>
-      <div class="model-selector">
-        <button class="model-option voice-option active" data-voice="off">
-          <span class="model-icon">🔇</span>
-          <span class="model-name">Tekst</span>
-          <span class="model-desc">Dyskretny dymek</span>
-        </button>
-        <button class="model-option voice-option" data-voice="on">
-          <span class="model-icon">🔊</span>
-          <span class="model-name">Głos</span>
-          <span class="model-desc">Czyta odpowiedź (słuchawki!)</span>
-        </button>
-      </div>
-      <p class="hint">Z głosem nie pokazuje dymka. Express czyta odpowiedź, Tłumacz - „Wniosek". <strong>Używaj na słuchawkach.</strong></p>
-    </div>
-
-    <button id="saveBtn">💾 Zapisz</button>
-    <button id="testBtn" style="margin-top:10px; background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); color:#60a5fa;">🔌 Sprawdź klucz</button>
-    <div class="status" id="status">✅ Zapisano!</div>
-    <div class="status" id="testStatus"></div>
-
-    <div class="usage">
-      <h3>📖 Jak używać</h3>
-      <p>
-        <span class="shortcut">Alt+O</span> - ⚡ Szybka analiza<br>
-        <span class="shortcut">Alt+I</span> - 🌐 Z wyszukiwaniem Google<br>
-        <span class="shortcut">Alt+P</span> - 🔁 Powtórz odpowiedź <span style="color:#64748b">(naciskaj = starsze, przytrzymaj = kopiuj)</span><br>
-        <span class="shortcut">Alt+K</span> - ✕ Przerwij / kasuj analizę<br>
-        <span class="shortcut">Alt+M</span> - 🔄 Przełącz model Flash/Pro <span style="color:#64748b">(ustaw w chrome://extensions/shortcuts)</span><br><br>
-        <strong>Obsługuje:</strong> pytania zamknięte (A/B/C/D), wielokrotny wybór, prawda/fałsz, pytania otwarte (liczby, tekst).
-      </p>
-    </div>
-
-    <div class="promo">
-      <div class="promo-eyebrow">Autor wtyczki</div>
-      <div class="promo-title">Stworzone przez <strong>Oktawiusz Kapica</strong></div>
-      <a class="promo-btn" href="https://oktawiuszkapica.pl" target="_blank" rel="noopener">
-        Zobacz moje portfolio
-      </a>
-      <div class="promo-links">
-        <a class="promo-link" href="https://github.com/OktawiuszKapica" target="_blank" rel="noopener">
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-          </svg>
-          GitHub
-        </a>
-        <a class="promo-link" href="mailto:hello@oktawiuszkapica.pl">
-          ✉️ Kontakt
-        </a>
-      </div>
-
-      <details class="beer">
-        <summary>🍺 Podobała Ci się wtyczka? Postaw piwo</summary>
-        <div class="beer-body">
-          <p class="beer-joke">
-            Za darmo, bez reklam i bez haczyków.<br>
-            Jeśli OKStudy oszczędziło Ci trochę nerwów,<br>
-            możesz postawić mi piwo. Nie musisz, ale będzie miło. 🍻
-          </p>
-          <img src="revolut-qr.jpg" alt="Revolut QR" class="beer-qr">
-          <div class="beer-handle">@oktawi42p</div>
-          <div class="beer-hint">Zeskanuj telefonem lub wpisz w aplikacji Revolut</div>
+<!doctype html>
+<html lang="pl" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OKStudy — ustawienia</title>
+    <link rel="icon" href="icons/icon32.png" />
+    <link rel="stylesheet" href="assets/ui.css" />
+  </head>
+  <body class="settings-body">
+    <div class="settings-shell">
+      <aside class="settings-sidebar">
+        <a class="brand" data-brand href="#ai" aria-label="OKStudy — ustawienia"></a>
+        <p class="sidebar-caption">Make studying OK again</p>
+        <nav aria-label="Ustawienia">
+          <a href="#ai" data-section="ai"><span data-icon="spark"></span>AI i połączenia</a
+          ><a href="#appearance" data-section="appearance"><span data-icon="eye"></span>Odpowiedzi i wygląd</a
+          ><a href="#shortcuts" data-section="shortcuts"><span data-icon="crop"></span>Skróty i obsługa</a
+          ><a href="#privacy" data-section="privacy"><span data-icon="shield"></span>Historia i prywatność</a>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="version">OKStudy <span id="version">2.0.0</span></div>
+          <a href="https://oktawiuszkapica.pl" target="_blank" rel="noopener noreferrer"
+            >Oktawiusz Kapica ↗</a
+          >
         </div>
-      </details>
+      </aside>
+      <main class="settings-main">
+        <header class="settings-hero">
+          <div>
+            <p class="eyebrow">USTAWIENIA TWOJEJ PRZESTRZENI</p>
+            <h1>Nauka.<br />Po Twojemu.</h1>
+            <p>Twój model. Twój sposób myślenia.<br />Resztą zajmie się OKStudy.</p>
+          </div>
+          <img src="assets/art/study-frame.webp" alt="Kartki z zadaniami otoczone limonkową ramką" />
+        </header>
+        <div class="status" id="status" role="status" hidden></div>
+        <section id="section-ai" class="settings-section">
+          <div class="section-heading">
+            <span class="section-number">01</span>
+            <div>
+              <h2>Wybierz swoją pomoc w nauce</h2>
+              <p>Połącz konto, wybierz model i zacznij od pierwszego zadania.</p>
+            </div>
+          </div>
+          <div class="provider-grid" id="providers" aria-label="Dostawca AI"></div>
+          <div class="settings-card">
+            <div id="authChoice" class="auth-choice" hidden>
+              <button data-auth="chatgpt" type="button">
+                <span data-icon="account"></span
+                ><span
+                  ><strong>Konto ChatGPT</strong><small>Korzystaj z dostępnego planu</small></span
+                ></button
+              ><button data-auth="api" type="button">
+                <span data-icon="key"></span
+                ><span><strong>Klucz API</strong><small>Osobne rozliczanie użycia</small></span>
+              </button>
+            </div>
+            <div id="apiFields">
+              <div class="section-title">
+                <label for="apiKey" id="keyLabel">Klucz API</label
+                ><a id="keyLink" target="_blank" rel="noopener noreferrer">Pobierz klucz ↗</a>
+              </div>
+              <div class="input-action">
+                <input
+                  type="password"
+                  id="apiKey"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="Wklej klucz API"
+                /><button class="icon-button" id="showKey" type="button" aria-label="Pokaż wpisywany klucz">
+                  <span data-icon="eye"></span>
+                </button>
+              </div>
+              <p class="hint" id="keyHint">Klucz jest przechowywany lokalnie na tym urządzeniu.</p>
+              <div class="row wrap">
+                <button class="button secondary" id="testKey" type="button">Sprawdź połączenie</button
+                ><button class="text-button danger" id="removeKey" type="button">Usuń zapisany klucz</button
+                ><small class="hint">Test wysyła krótkie zapytanie do API.</small>
+              </div>
+              <div class="status" id="testStatus" role="status" hidden></div>
+            </div>
+            <div id="chatgptFields" hidden>
+              <div id="accountPicker" class="account-picker" hidden>
+                <label for="chatgptAccount">Konto ChatGPT</label
+                ><select id="chatgptAccount">
+                  <option value="__new">Dodaj konto…</option>
+                </select>
+              </div>
+              <div class="chatgpt-card">
+                <img src="chatgpt.jpg" alt="" width="34" height="34" />
+                <div>
+                  <h3>Połącz swój plan ChatGPT</h3>
+                  <p id="chatgptStatus">Zaloguj się na stronie OpenAI i zezwól na korzystanie z planu.</p>
+                </div>
+              </div>
+              <div class="row wrap">
+                <button class="button chatgpt-button" id="signIn" type="button">
+                  <img src="chatgpt.jpg" alt="" width="20" height="20" /><span id="signInLabel"
+                    >Continue with ChatGPT</span
+                  ></button
+                ><button class="text-button" id="signOut" type="button" hidden>Wyloguj</button
+                ><a id="manageUsage" target="_blank" rel="noopener noreferrer" hidden>Zarządzaj użyciem ↗</a>
+              </div>
+              <div class="status" id="authStatus" role="status" hidden></div>
+              <details class="setup-guide" id="companionHelp">
+                <summary>Pierwsze połączenie na Windows</summary>
+                <p>
+                  Logowanie wymaga niewielkiego modułu OKStudy. Zainstaluj go raz dla tej przeglądarki.
+                  Potrzebny jest Node.js 22 lub nowszy.
+                </p>
+                <ol>
+                  <li>Otwórz folder <strong>companion</strong> z paczki OKStudy.</li>
+                  <li>Uruchom w nim PowerShell i wykonaj poniższe polecenie.</li>
+                  <li>Wróć tutaj i kliknij <strong>Continue with ChatGPT</strong>.</li>
+                </ol>
+                <code id="installCommand"></code
+                ><button class="text-button" id="copyInstall" type="button">Kopiuj polecenie</button>
+                <p class="hint">
+                  Dostępność modeli i limity zależą od konta. Korzystanie z abonamentu nie przełącza się
+                  automatycznie na płatne API.
+                </p>
+                <a
+                  href="https://developers.openai.com/siwc/token-sharing-open-source"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Jak działa korzystanie z planu ChatGPT ↗</a
+                >
+              </details>
+            </div>
+            <div class="model-field">
+              <label for="model">Model</label
+              ><select id="model"></select>
+              <div id="customModelField" hidden>
+                <label for="customModel">Identyfikator własnego modelu</label
+                ><input
+                  id="customModel"
+                  spellcheck="false"
+                  maxlength="120"
+                  placeholder="np. identyfikator z dokumentacji dostawcy"
+                />
+              </div>
+              <p class="hint" id="modelHint">
+                Wybierz model obsługujący obrazy. Limity i opłaty zależą od konta dostawcy.
+              </p>
+            </div>
+          </div>
+        </section>
+        <section id="section-appearance" class="settings-section" hidden>
+          <div class="section-heading">
+            <span class="section-number">02</span>
+            <div>
+              <h2>Tak, jak lubisz się uczyć</h2>
+              <p>Dopasuj odpowiedzi, głos i wygląd do siebie.</p>
+            </div>
+          </div>
+          <div class="settings-card">
+            <label>Domyślny sposób odpowiedzi</label>
+            <div class="mode-cards" id="modes"></div>
+            <p class="hint" id="modeHint"></p>
+            <div class="field-grid">
+              <div>
+                <label for="voice">Czytanie na głos</label
+                ><select id="voice">
+                  <option value="off">Tylko tekst</option>
+                  <option value="both">Tekst i głos</option>
+                  <option value="only">Tylko głos</option>
+                </select>
+              </div>
+              <div>
+                <label for="theme">Motyw interfejsu</label
+                ><select id="theme">
+                  <option value="dark">Grafitowy</option>
+                  <option value="light">Jasny papier</option>
+                  <option value="system">Zgodny z systemem</option>
+                </select>
+              </div>
+            </div>
+            <label class="switch-line"
+              ><span
+                ><strong>Wyszukiwanie w internecie</strong
+                ><small
+                  >Domyślnie sprawdzaj źródła przy analizie. Dostawca może naliczać dodatkowe opłaty.</small
+                ></span
+              ><input type="checkbox" role="switch" id="internet"
+            /></label>
+          </div>
+          <div class="settings-card">
+            <div class="section-title">
+              <h3>Express po Twojemu</h3>
+              <span class="tag">PODGLĄD NA ŻYWO</span>
+            </div>
+            <div class="express-preview" id="expressPreview">
+              <div class="preview-page"><i></i><i></i><i></i></div>
+              <span id="expressSample">x = 2 lub x = 3</span>
+            </div>
+            <div class="field-grid">
+              <div>
+                <label for="position">Pozycja odpowiedzi</label
+                ><select id="position">
+                  <option value="br">Prawy dolny róg</option>
+                  <option value="bl">Lewy dolny róg</option>
+                  <option value="tr">Prawy górny róg</option>
+                  <option value="tl">Lewy górny róg</option>
+                  <option value="bc">Środek na dole</option>
+                </select>
+              </div>
+              <div>
+                <label for="duration">Czas wyświetlania <output id="durationValue"></output></label
+                ><input id="duration" type="range" min="3" max="30" step="1" />
+              </div>
+              <div>
+                <label for="size">Rozmiar tekstu <output id="sizeValue"></output></label
+                ><input id="size" type="range" min="11" max="24" step="1" />
+              </div>
+              <div>
+                <label for="opacity">Widoczność <output id="opacityValue"></output></label
+                ><input id="opacity" type="range" min="25" max="100" step="5" />
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="section-shortcuts" class="settings-section" hidden>
+          <div class="section-heading">
+            <span class="section-number">03</span>
+            <div>
+              <h2>Od pytania do odpowiedzi</h2>
+              <p>Uruchamiaj analizę tak, jak jest Ci najwygodniej.</p>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div id="shortcutList" class="shortcut-list"></div>
+            <button id="editShortcuts" class="button secondary" type="button">
+              Zmień skróty w przeglądarce ↗
+            </button>
+          </div>
+          <div class="steps-grid">
+            <div>
+              <span>01</span>
+              <h3>Zaznacz</h3>
+              <p>Kliknij ikonę OKStudy i wybierz fragment ekranu. Popraw ramkę, a potem potwierdź.</p>
+            </div>
+            <div>
+              <span>02</span>
+              <h3>Zrozum</h3>
+              <p>Przeczytaj wyjaśnienie w panelu obok strony. Dopytaj o każdy niejasny krok.</p>
+            </div>
+            <div>
+              <span>03</span>
+              <h3>Zapamiętaj</h3>
+              <p>Wróć do historii lub pobierz odpowiedź jako notatkę.</p>
+            </div>
+          </div>
+          <p class="hint">Zaznaczony tekst możesz też wysłać z menu pod prawym przyciskiem myszy.</p>
+        </section>
+        <section id="section-privacy" class="settings-section" hidden>
+          <div class="section-heading">
+            <span class="section-number">04</span>
+            <div>
+              <h2>Twoje dane, pod Twoją kontrolą</h2>
+              <p>Wybierz, co OKStudy ma zapamiętywać na tym komputerze.</p>
+            </div>
+          </div>
+          <div class="settings-card">
+            <label class="switch-line"
+              ><span
+                ><strong>Zachowuj historię po zamknięciu przeglądarki</strong
+                ><small
+                  >Do 40 ostatnich zadań. Historia będzie zapisywana lokalnie na tym urządzeniu.</small
+                ></span
+              ><input type="checkbox" role="switch" id="persistentHistory"
+            /></label>
+            <div class="privacy-facts">
+              <p>
+                <strong>Zadania i zrzuty</strong><br />Do wybranego dostawcy trafia zaznaczony tekst lub obraz
+                oraz kontekst rozmowy. Zrzuty nie są zapisywane na dysku przez OKStudy; ostatnie obrazy mogą
+                pozostać krótko w pamięci, żeby umożliwić dopytanie.
+              </p>
+              <p>
+                <strong>Klucze i konto</strong><br />Klucze API są przechowywane lokalnie, poza synchronizacją
+                Chrome. Moduł ChatGPT na Windows zabezpiecza poświadczenia kontem systemowym.
+              </p>
+              <p>
+                <strong>Historia sesji</strong><br />Przy wyłączonym trwałym zapisie historia znika po
+                restarcie przeglądarki, przeładowaniu lub aktualizacji rozszerzenia.
+              </p>
+            </div>
+            <div class="section-title">
+              <span id="historyCount"></span
+              ><button id="clearHistory" class="button secondary danger" type="button">
+                <span data-icon="trash"></span>Wyczyść historię
+              </button>
+            </div>
+            <div id="deleteConfirm" class="confirm-box" hidden>
+              <p>Usunąć wszystkie zapisane zadania i odpowiedzi z OKStudy?</p>
+              <div class="row">
+                <button id="confirmClear" class="button secondary danger" type="button">Usuń historię</button
+                ><button id="cancelClear" class="text-button" type="button">Zachowaj</button>
+              </div>
+            </div>
+          </div>
+        </section>
+        <div class="save-bar">
+          <span id="saveHint">Wszystko gotowe do nauki.</span
+          ><button id="save" class="button primary" type="button">
+            <span data-icon="check"></span>Zapisz ustawienia
+          </button>
+        </div>
+        <footer class="settings-footer">
+          <span
+            >Stworzone przez
+            <a href="https://oktawiuszkapica.pl" target="_blank" rel="noopener noreferrer"
+              >Oktawiusza Kapicę ↗</a
+            ></span
+          >
+          <div>
+            <a
+              href="https://github.com/OktawiuszKapica/OKStudy/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Wydania ↗</a
+            ><a href="mailto:hello@oktawiuszkapica.pl">Kontakt</a>
+            <details class="support">
+              <summary>Wesprzyj projekt</summary>
+              <div>
+                <img src="revolut-qr.jpg" alt="Kod QR Revolut" width="150" />
+                <p>@oktawi42p</p>
+              </div>
+            </details>
+          </div>
+        </footer>
+      </main>
     </div>
-
-    <div class="footer">
-      OKStudy v1.4.0 • © Oktawiusz Kapica •
-      <a href="https://oktawiuszkapica.pl" target="_blank" rel="noopener">OktawiuszKapica.pl</a>
-    </div>
-  </div>
-
-  <script src="js/options.js"></script>
-</body>
+    <dialog id="planWelcome" class="plan-welcome">
+      <img src="chatgpt.jpg" alt="ChatGPT" width="48" height="48" />
+      <h2>Korzystasz ze swojego planu ChatGPT</h2>
+      <p>
+        Obsługiwane zapytania w OKStudy będą korzystać z Twojego planu i jego limitów. Użyciem możesz
+        zarządzać w ustawieniach ChatGPT.
+      </p>
+      <a id="welcomeUsage" target="_blank" rel="noopener noreferrer">Zarządzaj użyciem ↗</a
+      ><button id="dismissWelcome" class="button primary" type="button">Rozumiem</button>
+    </dialog>
+    <script src="js/options.js"></script>
+  </body>
 </html>

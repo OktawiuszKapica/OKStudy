@@ -1,147 +1,102 @@
-<p align="center">
-  <img src="logo.png" alt="OKStudy" width="320">
-</p>
+<p align="center"><img src="assets/brand/mark.svg" alt="OKStudy" width="112"></p>
 
-# OKStudy
+# OKStudy 2
 
-> **Make studying OK again** ✨
+**Zaznacz zadanie. Zrozum rozwiązanie.**
 
-Minimalistyczna wtyczka Chrome do wspomagania nauki. Robi zrzut ekranu, analizuje treść zadania i pomaga je zrozumieć. Obsługuje **czterech dostawców AI: Gemini, Claude, ChatGPT i Grok** (model do wyboru, każdy na własnym kluczu API - „bring your own key").
+Rozszerzenie Chrome do nauki z Gemini, Claude, OpenAI lub Grok. Własna identyfikacja, grafiki, motywy grafitowy i jasny oraz panel do rozmowy obok strony. Autorem projektu jest **Oktawiusz Kapica** — OK to jego inicjały.
 
-## 🎓 Tryby działania
+## Co potrafi
 
-Wtyczka ma dwa tryby (przełączane w ustawieniach, wybór zapisuje się na stałe):
+- Wybór fragmentu ekranu z podglądem i potwierdzeniem, analiza widocznego ekranu lub zaznaczonego tekstu.
+- **Wyjaśnij** — rozwiązanie krok po kroku; **Podpowiedz** — kolejne wskazówki na żądanie; **Express** — krótka odpowiedź na stronie.
+- Panel boczny: odpowiedź na żywo, Markdown, wzory matematyczne, źródła, dopytywanie, kopiowanie i eksport notatki `.md`.
+- Historia do 40 zadań, wyszukiwanie również po treści odpowiedzi, usuwanie pojedynczych zadań lub całej historii.
+- Głos: sam tekst, tekst i odczyt lub sam odczyt. Express ma regulowaną pozycję, wielkość tekstu, widoczność i czas.
+- Szybka zmiana dostawcy i modelu bezpośrednio pod ikoną rozszerzenia.
+- Klucze API czterech dostawców albo dostępny plan ChatGPT przez opcjonalny moduł na Windows.
 
-- **🎓 Tłumacz** *(domyślny)* - wyjaśnia **krok po kroku**, jak rozwiązać zadanie, i pokazuje czytelne wytłumaczenie na dole ekranu. Tryb edukacyjny.
-- **⚡ Express** - pokazuje samą, zwięzłą odpowiedź, dyskretnie w rogu.
+## Instalacja i aktualizacja
 
-## ✨ Skróty klawiszowe
+1. Rozpakuj paczkę `OKStudy-2.0.0.zip`. Folder **OKStudy** zawiera `manifest.json`.
+2. Otwórz `chrome://extensions`, włącz **Tryb dewelopera** i wybierz **Załaduj rozpakowane**.
+3. Wskaż folder OKStudy i przypnij ikonę do paska przeglądarki.
+4. W ustawieniach wybierz dostawcę i sposób połączenia, a następnie **Zapisz ustawienia**.
 
-- ⚡ **Alt+O** - Szybka analiza (bez internetu)
-- 🌐 **Alt+I** - Analiza z wyszukiwaniem Google
-- 🔁 **Alt+P** - Powtórz odpowiedź (naciskaj = starsze odpowiedzi, **przytrzymaj** = kopiuj do schowka)
-- ✕ **Alt+K** - Przerwij / kasuj bieżącą analizę
-- 🔄 **Alt+M** - Przełącz model Flash ⇄ Pro *(skrót trzeba przypisać ręcznie - patrz niżej)*
+Przy aktualizacji istniejącej instalacji zachowaj jej folder i przeładuj rozszerzenie po zastąpieniu plików. Nowa ścieżka może oznaczać nowy identyfikator rozszerzenia i oddzielne dane. Ustawienia z wersji 1.x, klucze i wcześniej wybrane modele migrują automatycznie. Stary model pozostaje dostępny jako własny identyfikator; jeśli dostawca go wycofał, wybierz nowy w ustawieniach.
 
-### 🔊 Czytanie na głos
-W ustawieniach możesz włączyć **czytanie odpowiedzi na głos** (wbudowany syntezator przeglądarki, po polsku, bez API). Po włączeniu wtyczka nie pokazuje dymka - tylko czyta. W trybie Express czyta odpowiedź (np. „D"), w trybie Tłumacz - sam „Wniosek". **Najlepiej używać ze słuchawkami.**
+Wymagany jest Chrome 116+ lub przeglądarka Chromium z obsługą panelu bocznego. Strony ustawień przeglądarki i sklepu rozszerzeń są ograniczone przez przeglądarkę.
 
-### Obsługiwane typy zadań:
-- ✅ Pytania zamknięte (A/B/C/D)
-- ✅ Wielokrotny wybór (wiele poprawnych odpowiedzi)
-- ✅ Prawda/Fałsz
-- ✅ Pytania otwarte (liczby, tekst, obliczenia)
+## Połączenie przez API
 
-## 📦 Instalacja
+Wybierz dostawcę, wklej klucz, wybierz model i zapisz. Przycisk **Sprawdź połączenie** wysyła krótkie zapytanie do wybranego modelu. Limity i opłaty wynikają z konta dostawcy. OKStudy nie zakłada stałej „darmowej liczby zapytań”.
 
-1. Pobierz najnowszą wersję z [Releases](https://github.com/OktawiuszKapica/OKStudy/releases)
-2. Rozpakuj archiwum ZIP
-3. Otwórz Chrome i wejdź w `chrome://extensions/`
-4. Włącz **Tryb dewelopera** (prawy górny róg)
-5. Kliknij **Załaduj rozpakowane** i wybierz folder `okstudy`
+Klucze: [Gemini](https://aistudio.google.com/apikey), [Claude](https://console.anthropic.com/settings/keys), [OpenAI](https://platform.openai.com/api-keys), [Grok](https://console.x.ai).
 
-## ⚙️ Konfiguracja
+Wyszukiwanie używa narzędzia dostawcy. Brak dostępu do wyszukiwania jest pokazywany jako błąd; aplikacja nie oznacza odpowiedzi bez wyszukiwania jako sprawdzonej w sieci. Lista modeli ma opcję podania własnego identyfikatora. Model musi obsługiwać obrazy, aby analizować zrzuty.
 
-1. Kliknij ikonę wtyczki lub wejdź w opcje
-2. Wybierz dostawcę AI (Gemini / Claude / ChatGPT / Grok)
-3. Wklej swój klucz API tego dostawcy:
-   - Gemini (darmowy): [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
-   - Claude (wymaga karty): [console.anthropic.com](https://console.anthropic.com/settings/keys)
-   - ChatGPT (wymaga karty): [platform.openai.com](https://platform.openai.com/api-keys)
-   - Grok (wymaga karty): [console.x.ai](https://console.x.ai)
-4. Wybierz model
-5. Wybierz tryb działania (🎓 Tłumacz lub ⚡ Express)
-6. Zapisz
+## Połączenie z planem ChatGPT — Windows
 
-## 🎯 Jak używać
+Ta opcja korzysta z oficjalnego [Sign in with ChatGPT dla aplikacji lokalnych](https://developers.openai.com/siwc/token-sharing-open-source). Dostępność modeli, uprawnienia oraz limity wynikają z konta. OKStudy pobiera listę modeli po zalogowaniu. Użycie planu jest oddzielone od klucza API; osiągnięcie limitu nie uruchamia płatnego API w tle.
 
-1. Otwórz stronę z testem/quizem
-2. Naciśnij **Alt+O** (szybka analiza) lub **Alt+I** (z wyszukiwaniem)
-3. Poczekaj na odpowiedź
-4. Jeśli chcesz zobaczyć odpowiedź ponownie - **Alt+P** (kolejne naciśnięcia pokazują starsze, do 5 wstecz)
-5. Przytrzymaj **Alt+P**, aby skopiować odpowiedź do schowka 📋
-6. Jeśli analiza poszła w złe miejsce lub się zacięła - **Alt+K** (przerywa)
+Logowanie wymaga lokalnego modułu **companion** i Node.js 22+. Rozszerzenie komunikuje się z nim przez Native Messaging. Moduł otwiera logowanie na stronie OpenAI, odbiera potwierdzenie przez lokalny adres `127.0.0.1` i wysyła obsługiwane zapytania bezpośrednio do OpenAI.
 
-## ⌨️ Skrót przełączania modelu (Alt+M)
+1. W ustawieniach wybierz **OpenAI → Konto ChatGPT**.
+2. Rozwiń instrukcję pierwszego połączenia i skopiuj polecenie zawierające identyfikator Twojego rozszerzenia.
+3. Otwórz PowerShell w folderze `companion` z paczki i wykonaj skopiowane polecenie. Instalator działa dla bieżącego użytkownika, bez administratora, i rejestruje moduł dla Chrome, Edge oraz Brave.
+4. Kliknij **Continue with ChatGPT**, zaakceptuj komunikację z modułem i dokończ logowanie na stronie OpenAI.
+5. Wybierz udostępniony model i zapisz ustawienia.
 
-Chrome pozwala wtyczce zasugerować maksymalnie **4 skróty**, dlatego przełączanie
-modelu trzeba przypisać samodzielnie (raz):
+Instalator kopiuje moduł do `%LOCALAPPDATA%\OKStudy\native-host`. Powtórz instalację po zmianie folderu/identyfikatora rozszerzenia albo aktualizacji modułu. Kopie rozszerzenia z innym ID wymagają osobnej rejestracji dozwolonego ID.
 
-1. Wejdź w `chrome://extensions/shortcuts`
-2. Znajdź **OKStudy → "Przełącz model Flash/Pro"**
-3. Kliknij pole i naciśnij np. **Alt+M**
+Możesz dodawać konta i przełączać je w ustawieniach. Każda rejestracja ma własny identyfikator. Wylogowanie usuwa lokalne tokeny, zachowuje rejestrację do ponownego logowania i próbuje zakończyć odnawialną sesję w OpenAI. Jeśli tego ostatniego nie uda się potwierdzić, OKStudy pokazuje komunikat. Dostępem i limitami zarządzasz w [ustawieniach użycia ChatGPT](https://chatgpt.com/settings/usage).
 
-Po przełączeniu na ekranie pojawi się na chwilę ⚡ Flash lub 🧠 Pro.
+## Obsługa
 
-## 🌐 Tryb z internetem (Alt+I) a darmowy klucz
+Kliknij ikonę OKStudy i wybierz **Zaznacz zadanie**, **Cały ekran** albo **Zaznaczony tekst**. Zaznaczony tekst można też wysłać z menu pod prawym przyciskiem myszy.
 
-Wyszukiwanie Google (grounding) w API Gemini jest dostępne **tylko na płatnym
-kluczu**. Na darmowym kluczu `Alt+I` automatycznie wykona analizę **bez
-wyszukiwania**, żebyś i tak dostał odpowiedź zamiast błędu.
+Podczas wyboru fragmentu przeciągnij ramkę i kliknij **Analizuj fragment**. Obsługa klawiaturą: strzałki przesuwają obszar, Shift + strzałki zmieniają rozmiar, Enter zatwierdza, Escape anuluje. Przed zatwierdzeniem obraz nie trafia do AI. Opcja **Cały ekran** wysyła widoczną część strony bez wyboru kadru.
 
-## 🔧 Wymagania
+| Skrót | Działanie |
+|---|---|
+| Alt + O | Widoczny ekran, bez wyszukiwania |
+| Alt + I | Widoczny ekran, z wyszukiwaniem |
+| Alt + P | Kolejne odpowiedzi z historii; przytrzymanie kopiuje |
+| Alt + K | Przerwanie i usunięcie bieżącego komunikatu |
+| Do przypisania | Przełączenie modelu |
+| Do przypisania | Zaznaczenie fragmentu ekranu |
 
-- Google Chrome lub przeglądarka oparta na Chromium (Edge, Brave, Opera)
-- Klucz API Google Gemini
+Skróty mogą kolidować z innymi rozszerzeniami. Ich faktyczne przypisania są widoczne w ustawieniach OKStudy; można je zmienić w `chrome://extensions/shortcuts`. Dawny „zapasowy skrót analizy” uruchamia teraz zaznaczenie fragmentu.
 
-## 📝 Changelog
+## Dane i prywatność
 
-### v1.4.0
-- 🔊 **Czytanie na głos** - odpowiedź czytana przez głośnik/słuchawki (Express czyta odpowiedź, Tłumacz „Wniosek"); w trybie głosu dymek się nie pokazuje
-- 📊 **Licznik zużycia Gemini** w ustawieniach (dzienny darmowy limit)
-- 🔔 **Powiadomienie o nowej wersji** - baner, gdy na GitHubie jest nowsza wersja
-- 💳 **Czytelny błąd przy braku środków** na koncie API (zamiast mylącego „błędne zapytanie")
-- ➕ Dodany **Grok (xAI)** jako czwarty dostawca
-- ⬆️ Aktualizacja modeli: Claude Opus 4.8, GPT-5.5
+- Treść zadania, obraz oraz kontekst rozmowy trafiają do wybranego dostawcy. Obowiązują jego zasady przetwarzania danych.
+- Klucze API pozostają w lokalnym magazynie rozszerzenia, poza synchronizacją Chrome. Skrypt działający na stronie nie ma dostępu do magazynu kluczy.
+- Moduł ChatGPT przechowuje własne poświadczenia w `%LOCALAPPDATA%\OKStudy\chatgpt.credentials`, zabezpieczone przez Windows DPAPI dla bieżącego użytkownika. Nie odczytuje sesji innych aplikacji. Odnawianie tokenów jest blokowane pomiędzy procesami, aby uniknąć równoczesnej rotacji.
+- Historia domyślnie żyje tylko w sesji rozszerzenia. Trwałe zapisywanie na tym urządzeniu można włączyć w ustawieniach.
+- Zrzuty nie są dodawane do trwałej historii. Maksymalnie trzy ostatnie obrazy są trzymane w pamięci przez maksymalnie 30 minut, o ile service worker nie zostanie wcześniej zamknięty. Dalsza rozmowa po utracie obrazu opiera się na zapisanym tekście; ponowna analiza obrazu wymaga ponownego zaznaczenia.
+- Rozszerzenie wstrzykuje skrypt na stronę dopiero po działaniu użytkownika, przez `activeTab`. Nie ma stałego dostępu do wszystkich odwiedzanych stron.
+- Czcionki, biblioteki, grafiki i kod są lokalne. Nie ma analityki ani zdalnie ładowanego JavaScriptu.
 
-### v1.3.0
-- 🤖 **Multi-AI** - do wyboru **Gemini, Claude, ChatGPT i Grok** (każdy na własnym kluczu)
-- 🔑 Osobne klucze i modele zapamiętywane per dostawca
-- 🧪 Test klucza działa dla każdego z dostawców
-- 🎨 Prawdziwe logo każdego dostawcy w ustawieniach
-- 📋 Modele: Gemini 3.5 Flash / 3.1 Pro, Claude Sonnet 4.6 / Haiku 4.5 / Opus 4.8, GPT-5 mini / GPT-5.5, Grok 4 / Grok 4 Fast
-- ℹ️ Wyszukiwarka (Alt+I) działa tylko dla Gemini; dla pozostałych dostawców traktowana jak zwykła analiza
+## Rozwój projektu
 
-### v1.2.1
-- 🐛 **Naprawka pozycji przy zoomie** - dymek nie ucieka poza ekran przy powiększeniu przeglądarki innym niż 100% (np. 125%, 150%)
-- 🆘 **Zapasowy skrót analizy** - jeśli Alt+O koliduje z inną wtyczką, można w `chrome://extensions/shortcuts` ustawić własny (np. Alt+A) dla „Szybka analiza - zapasowy skrót"
-- 💬 **Widoczny komunikat**, gdy nie uda się zrobić zrzutu (zamiast cichego braku reakcji)
+```sh
+npm ci
+npm run build
+npm test
+npx playwright install chromium
+npm run test:browser
+npm run package
+```
 
-### v1.2.0
-- 🎓 **Tryb Tłumacz** (domyślny) - wyjaśnienie krok po kroku zamiast samej odpowiedzi, czytelny panel na dole ekranu
-- ⚡ **Tryb Express** - dotychczasowe zachowanie (sama odpowiedź, dyskretnie) jako opcja
-- 🔘 Przełącznik trybu w ustawieniach (zapisywany na stałe)
-- 🧼 Mniej śladów w przeglądarce (wyciszone logi, neutralne nazwy w DOM)
-- ⏱️ Limit czasu zapytania (auto-przerwanie po 30 s zamiast zawieszenia)
+Źródła: `src/`. Pliki `js/` są generowane przez esbuild. Interfejs używa modułowego JavaScriptu, lokalnego Manrope, DOMPurify, Marked i KaTeX. Moduł w `companion/` korzysta z Node.js oraz JOSE. Gotowe pliki rozszerzenia są dołączone — użytkownik paczki nie musi instalować npm.
 
-### v1.1.0
-- 🆕 **Alt+K** - przerywanie / kasowanie bieżącej analizy (anuluje też zapytanie do API w locie)
-- 🆕 **Alt+M** - przełączanie modelu Flash/Pro w locie (skrót przypisywany ręcznie)
-- 🆕 **Historia odpowiedzi** - kolejne naciśnięcia Alt+P cofają się do 5 odpowiedzi wstecz
-- 🆕 **Kopiowanie** - przytrzymanie Alt+P kopiuje odpowiedź do schowka
-- 🆕 **Test klucza API** w ustawieniach (przycisk „Sprawdź klucz")
-- 🆕 **Klik w ikonę** otwiera ustawienia
-- 🛡️ **Internet (Alt+I)** automatycznie przechodzi w tryb bez wyszukiwania na darmowym kluczu
-- 💬 **Czytelne komunikaty błędów** (zły klucz, brak dostępu, limit zapytań, niedostępny model)
-- ⬆️ Aktualizacja modeli: **Gemini 3.5 Flash** (domyślny) i **Gemini 3.1 Pro**
-- 🔄 Automatyczna migracja starych ustawień modeli
-- 🧹 Drobne porządki w repozytorium
+Testy korzystają z syntetycznych danych i kontrolowanych odpowiedzi dostawców. Instrukcje oraz zakres prób przed publicznym wydaniem: [docs/TESTING.md](docs/TESTING.md). Kierunek wizualny i briefy grafik: [docs/DESIGN.md](docs/DESIGN.md). Poprzednie zmiany: [docs/CHANGELOG.md](docs/CHANGELOG.md). Licencje bibliotek: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
-### v1.0.0
-- Pierwsza publiczna wersja
-- Analiza zrzutów ekranu przez Gemini 3
-- Obsługa wielu typów pytań
-- Tryb szybki i z wyszukiwaniem
-- Funkcja powtarzania odpowiedzi
+Dokumentacja integracji ChatGPT: [logowanie](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [konta i sesje](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions), [modele i zapytania](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference). Implementację przygotowano według dokumentacji dostępnej 6 października 2026.
 
-## 👨‍💻 Autor
+## Autor
 
-**Oktawiusz Kapica**
+**Oktawiusz Kapica** · [Portfolio](https://oktawiuszkapica.pl) · [GitHub](https://github.com/OktawiuszKapica) · [Kontakt](mailto:hello@oktawiuszkapica.pl)
 
-- 🌐 Portfolio: [OktawiuszKapica.pl](https://oktawiuszkapica.pl)
-- 💻 GitHub: [@OktawiuszKapica](https://github.com/OktawiuszKapica)
-- ✉️ Kontakt: [hello@oktawiuszkapica.pl](mailto:hello@oktawiuszkapica.pl)
-
----
-
-*OK = Oktawiusz Kapica* 😉
+Make studying OK again.

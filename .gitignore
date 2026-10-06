@@ -1,0 +1,6 @@
+node_modules/
+artifacts/
+releases/
+*.log
+.env*
+companion/private/

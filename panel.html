@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pl" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OKStudy — przestrzeń do nauki</title>
+    <link rel="stylesheet" href="assets/ui.css" />
+    <link rel="stylesheet" href="assets/katex/katex.min.css" />
+  </head>
+  <body class="panel-body">
+    <header class="topbar">
+      <a class="brand" data-brand href="options.html" target="_blank" aria-label="OKStudy — ustawienia"></a>
+      <div class="row">
+        <button id="showHistory" class="icon-button" aria-label="Historia zadań" title="Historia zadań">
+          <span data-icon="history"></span></button
+        ><button id="openSettings" class="icon-button" aria-label="Ustawienia" title="Ustawienia">
+          <span data-icon="settings"></span>
+        </button>
+      </div>
+    </header>
+    <main class="panel-main">
+      <section id="welcome" class="panel-welcome">
+        <p class="eyebrow">MAŁE KROKI. WIĘCEJ ZROZUMIENIA.</p>
+        <img src="assets/art/study-frame.webp" alt="Kartki z zadaniami w zielonej ramce" />
+        <h1>Zrób miejsce<br />na zrozumienie.</h1>
+        <p>Zaznacz zadanie na stronie.<br />Wspólnie przejdziemy przez rozwiązanie.</p>
+        <button id="startFromPanel" class="button primary">
+          <span data-icon="crop"></span>Zaznacz zadanie
+        </button>
+        <p class="hint">Możesz też użyć ikony OKStudy lub skrótu Alt + O.</p>
+      </section>
+      <section id="historyView" hidden>
+        <div class="section-title">
+          <h1>Twoje zadania</h1>
+          <button class="icon-button" id="closeHistory" aria-label="Zamknij historię">
+            <span data-icon="close"></span>
+          </button>
+        </div>
+        <label class="sr-only" for="historySearch">Szukaj w historii</label
+        ><input id="historySearch" type="search" placeholder="Szukaj pytania lub odpowiedzi…" />
+        <div id="historyList" class="history-list"></div>
+        <img
+          id="historyArtwork"
+          class="history-art"
+          src="assets/art/notes.webp"
+          alt="Kartki gotowe na nowe notatki"
+        />
+        <p id="historyEmpty" class="empty-inline">Nie ma jeszcze zapisanych zadań.</p>
+      </section>
+      <section id="answerView" hidden>
+        <div class="answer-heading">
+          <p class="eyebrow" id="answerMode">WYJAŚNIENIE</p>
+          <h1 id="answerTitle">Krok po kroku</h1>
+          <p id="answerMeta" class="answer-meta"></p>
+        </div>
+        <div id="conversation"></div>
+        <div id="sources" class="sources"></div>
+        <div id="searchSuggestions" class="search-suggestions"></div>
+        <div class="answer-actions" id="answerActions">
+          <button class="button secondary" id="copyAnswer"><span data-icon="copy"></span>Kopiuj</button
+          ><button
+            class="icon-button"
+            id="speakAnswer"
+            aria-label="Przeczytaj odpowiedź"
+            title="Przeczytaj odpowiedź"
+          >
+            <span data-icon="sound"></span></button
+          ><button
+            class="icon-button"
+            id="exportAnswer"
+            aria-label="Zapisz jako notatkę Markdown"
+            title="Zapisz notatkę"
+          >
+            <span data-icon="download"></span></button
+          ><button
+            class="icon-button danger"
+            id="deleteAnswer"
+            aria-label="Usuń zadanie"
+            title="Usuń zadanie"
+          >
+            <span data-icon="trash"></span>
+          </button>
+        </div>
+      </section>
+      <section id="progress" class="progress-card" hidden>
+        <div class="row">
+          <span class="loading-frame" aria-hidden="true"></span
+          ><strong id="progressLabel">Analizuję zadanie…</strong>
+        </div>
+        <p id="progressDetail">Układam wyjaśnienie krok po kroku.</p>
+        <div id="partial" class="prose"></div>
+        <button class="text-button" id="cancel">Przerwij analizę</button>
+      </section>
+      <div class="status" id="status" role="status" hidden></div>
+      <a class="button primary" id="limitUsage" target="_blank" rel="noopener noreferrer" hidden
+        >Zarządzaj użyciem ChatGPT ↗</a
+      >
+    </main>
+    <footer id="composer" class="composer" hidden>
+      <div class="suggested-questions" id="suggestions">
+        <button data-question="Wyjaśnij to prostszymi słowami.">Prościej</button
+        ><button data-question="Pokaż podobny przykład.">Podobny przykład</button
+        ><button data-question="Podaj kolejną wskazówkę, bez pełnego rozwiązania." id="nextHint">
+          Kolejna wskazówka</button
+        ><button data-question="Pokaż teraz pełne rozwiązanie krok po kroku." id="reveal">
+          Pokaż rozwiązanie
+        </button>
+      </div>
+      <form id="questionForm">
+        <label class="sr-only" for="question">Dopytaj o rozwiązanie</label
+        ><textarea
+          id="question"
+          rows="2"
+          maxlength="4000"
+          placeholder="Który krok chcesz lepiej zrozumieć?"
+        ></textarea
+        ><button id="sendQuestion" class="send-button" aria-label="Wyślij pytanie">
+          <span data-icon="send"></span>
+        </button>
+      </form>
+      <p class="composer-note" id="contextNote">AI może się pomylić. Sprawdzaj ważne obliczenia i źródła.</p>
+    </footer>
+    <script src="js/panel.js"></script>
+  </body>
+</html>

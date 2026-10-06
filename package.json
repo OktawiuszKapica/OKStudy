@@ -1,0 +1,27 @@
+{
+  "name": "okstudy",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "check": "npm run build && npm test",
+    "package": "npm run build && node scripts/package.mjs",
+    "format": "prettier --write \"src/*.js\" \"companion/*.js\" \"tests/*.mjs\" \"scripts/*.mjs\" \"*.html\" \"assets/ui.css\""
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.2.0",
+    "dompurify": "^3.2.6",
+    "jose": "^6.1.0",
+    "katex": "^0.19.0",
+    "marked": "^16.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "playwright": "^1.56.0",
+    "prettier": "^3.9.9",
+    "sharp": "^0.35.5"
+  }
+}

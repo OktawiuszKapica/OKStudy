@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pl" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OKStudy</title>
+    <link rel="stylesheet" href="assets/ui.css" />
+  </head>
+  <body class="popup-body">
+    <header class="topbar">
+      <a class="brand" data-brand href="options.html" target="_blank" aria-label="OKStudy — ustawienia"></a
+      ><button class="icon-button" id="openSettings" title="Ustawienia" aria-label="Ustawienia">
+        <span data-icon="settings"></span>
+      </button>
+    </header>
+    <main class="popup-main">
+      <section class="popup-hero">
+        <div>
+          <p class="eyebrow">TWOJA PRZESTRZEŃ DO NAUKI</p>
+          <h1>Co dziś<br />rozpracujemy?</h1>
+        </div>
+        <img src="assets/art/study-frame.webp" alt="" class="popup-art" />
+      </section>
+      <button class="connection-row" id="connection" aria-expanded="false" aria-controls="quickConnection">
+        <span class="provider-image"><img id="providerImage" src="gemini.png" alt="" /></span
+        ><span class="connection-copy"
+          ><strong id="providerName">Gemini</strong><small id="modelName">Wczytywanie ustawień…</small></span
+        ><span class="tag" id="connectionTag">API</span><span data-icon="arrow"></span>
+      </button>
+      <div id="quickConnection" class="quick-connection" hidden>
+        <label for="quickProvider">Dostawca i połączenie</label>
+        <select id="quickProvider">
+          <option value="gemini:api">Gemini · klucz API</option>
+          <option value="claude:api">Claude · klucz API</option>
+          <option value="openai:chatgpt">ChatGPT · Twój plan</option>
+          <option value="openai:api">OpenAI · klucz API</option>
+          <option value="grok:api">Grok · klucz API</option>
+        </select>
+        <label for="quickModel">Model</label
+        ><select id="quickModel"></select>
+        <button id="manageConnection" class="text-button">Połącz konto lub zarządzaj kluczami ↗</button>
+      </div>
+      <div id="setupHint" class="inline-note" hidden>
+        Połącz wybranego dostawcę w ustawieniach, aby rozpocząć.
+      </div>
+      <button class="button primary large" id="region">
+        <span data-icon="crop"></span>Zaznacz zadanie<span class="button-arrow">↗</span>
+      </button>
+      <div class="two-columns">
+        <button class="button secondary" id="screen"><span data-icon="screen"></span>Cały ekran</button
+        ><button class="button secondary" id="text"><span data-icon="text"></span>Zaznaczony tekst</button>
+      </div>
+      <div class="segmented" id="modes" aria-label="Sposób odpowiedzi"></div>
+      <label class="switch-line compact"
+        ><span><span data-icon="globe"></span>Sprawdź w internecie</span
+        ><input type="checkbox" id="internet" role="switch"
+      /></label>
+      <div class="status" id="status" role="status" hidden></div>
+      <section class="recent-section">
+        <div class="section-title">
+          <h2>Ostatnie zadania</h2>
+          <button class="text-button" id="openHistory">
+            Zobacz wszystkie <span aria-hidden="true">↗</span>
+          </button>
+        </div>
+        <div id="recent"></div>
+        <p id="emptyHistory" class="empty-inline">Pierwsze zadanie zaczyna się od zaznaczenia.</p>
+      </section>
+    </main>
+    <footer class="popup-footer"><span>Make studying OK again</span><kbd>Alt + O</kbd></footer>
+    <script src="js/popup.js"></script>
+  </body>
+</html>
