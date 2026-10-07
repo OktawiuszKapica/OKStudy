@@ -24,12 +24,13 @@ public final class MainActivity extends Activity {
   private Prefs prefs;
   private Secrets secrets;
   private EditText keyField, modelField;
-  private TextView status, answer, sessionState;
+  private TextView status, answer, sessionState, modelHint;
   private Button start, analyzeImage, catalog;
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final ExecutorService network = Executors.newFixedThreadPool(2);
   private ApiClient.Cancel request, catalogRequest;
   private boolean pendingStart, alive;
+  private boolean statusError;
   private String image, displayedAnswer = "", displayedError = "";
   private Speech speech;
   private int selectedTab;
@@ -139,6 +140,22 @@ public final class MainActivity extends Activity {
     status.setPadding(dp(22), dp(9), dp(22), dp(9));
     status.setMaxLines(4);
     status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+    status.setOnClickListener(
+        v -> {
+          if (!statusError) return;
+          String details = status.getText().toString();
+          new AlertDialog.Builder(this)
+              .setTitle("Szczegóły błędu")
+              .setMessage(details)
+              .setPositiveButton("Zamknij", null)
+              .setNeutralButton(
+                  "Kopiuj",
+                  (d, i) ->
+                      ((ClipboardManager) getSystemService(CLIPBOARD_SERVICE))
+                          .setPrimaryClip(ClipData.newPlainText("OKStudy — błąd", details)))
+              .show();
+        });
+    status.setClickable(false);
     root.addView(status);
     analyzeImage = Design.button(this, "Analizuj wybrany zrzut", true);
     analyzeImage.setVisibility(View.GONE);
@@ -177,6 +194,8 @@ public final class MainActivity extends Activity {
     label(connection, "Model");
     modelField = edit(connection, "Pobierz listę lub wpisz identyfikator", false);
     modelField.setText(prefs.model());
+    modelHint = Design.text(this, "", 12, Design.MUTED, false);
+    connection.addView(modelHint);
     keyHint();
     provider.setSelection(Math.max(0, Arrays.asList(PROVIDERS).indexOf(prefs.provider())));
     provider.setOnItemSelectedListener(
@@ -514,6 +533,12 @@ public final class MainActivity extends Activity {
 
   private void refreshAccount() {
     boolean plan = prefs.provider().equals("chatgpt");
+    modelHint.setText(
+        plan
+            ? "Lista pochodzi z OpenAI dla tego połączenia i może różnić się od listy w ChatGPT lub"
+                  + " Codex. Brak modelu? Wpisz jego identyfikator ręcznie; dostęp potwierdzi"
+                  + " dopiero zadanie."
+            : "Wybierz model obsługujący obrazy z listy dostawcy lub wpisz jego identyfikator.");
     accountBox.setVisibility(plan ? View.VISIBLE : View.GONE);
     apiBox.setVisibility(plan ? View.GONE : View.VISIBLE);
     accountBox.removeAllViews();
@@ -853,6 +878,7 @@ public final class MainActivity extends Activity {
                         || (provider.equals("chatgpt") && !account.equals(ChatGpt.selected(this))))
                       return;
                     catalog.setEnabled(true);
+                    show("Pobrano " + models.size() + " modeli dla tego połączenia.", false);
                     if (models.isEmpty()) {
                       show("Konto nie zwróciło modeli. Możesz wpisać identyfikator ręcznie.", true);
                       return;
@@ -862,7 +888,10 @@ public final class MainActivity extends Activity {
                             .map(m -> m.name().equals(m.id()) ? m.name() : m.name() + "\n" + m.id())
                             .toArray(String[]::new);
                     new AlertDialog.Builder(this)
-                        .setTitle("Modele konta")
+                        .setTitle(
+                            provider.equals("chatgpt")
+                                ? "Lista OpenAI dla tego konta"
+                                : "Modele konta")
                         .setItems(
                             labels,
                             (d, i) -> {
@@ -870,6 +899,7 @@ public final class MainActivity extends Activity {
                               show("Wybrano model. Zapisz połączenie.", false);
                             })
                         .setNegativeButton("Zamknij", null)
+                        .setNeutralButton("Wpisz identyfikator", (d, i) -> enterModel())
                         .show();
                   });
             } catch (Exception e) {
@@ -885,6 +915,49 @@ public final class MainActivity extends Activity {
     } catch (Exception e) {
       error(e);
     }
+  }
+
+  private void enterModel() {
+    LinearLayout content = Design.column(this);
+    content.setPadding(dp(22), dp(8), dp(22), 0);
+    content.addView(
+        Design.text(
+            this,
+            "Wpisanie modelu nie potwierdza dostępu na koncie. Po wyborze zapisz połączenie.",
+            13,
+            Design.MUTED,
+            false));
+    String provider = prefs.provider();
+    EditText input =
+        edit(
+            content,
+            provider.equals("chatgpt") || provider.equals("openai")
+                ? "np. gpt-6.1-sol"
+                : "Identyfikator modelu",
+            false);
+    AlertDialog dialog =
+        new AlertDialog.Builder(this)
+            .setTitle("Własny model")
+            .setView(content)
+            .setPositiveButton("Wybierz", null)
+            .setNegativeButton("Anuluj", null)
+            .create();
+    dialog.setOnShowListener(
+        d ->
+            dialog
+                .getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(
+                    v -> {
+                      String model = input.getText().toString().trim();
+                      if (!ApiClient.validModel(model)) {
+                        input.setError("Wpisz prawidłowy identyfikator modelu.");
+                        return;
+                      }
+                      modelField.setText(model);
+                      show("Wybrano model. Zapisz połączenie.", false);
+                      dialog.dismiss();
+                    }));
+    dialog.show();
   }
 
   private void begin() {
@@ -1154,7 +1227,10 @@ public final class MainActivity extends Activity {
 
   private void show(String value, boolean error) {
     if (!alive) return;
+    statusError = error;
     status.setText(value);
+    status.setClickable(error);
+    status.setContentDescription(error ? value + " Dotknij, aby otworzyć szczegóły błędu." : value);
     status.setTextColor(error ? Color.rgb(255, 193, 168) : Design.MUTED);
   }
 

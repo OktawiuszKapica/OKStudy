@@ -198,7 +198,8 @@ final class ApiClient {
 
   static String extract(String provider, JSONObject data) throws Exception {
     StringBuilder text = new StringBuilder();
-    if (data.has("error"))
+    // Responses includes "error": null on successful results as well.
+    if (data.has("error") && !data.isNull("error"))
       throw new Exception("Dostawca nie ukończył analizy. Sprawdź model i dostęp na koncie.");
     if (provider.equals("gemini")) {
       JSONObject candidate =

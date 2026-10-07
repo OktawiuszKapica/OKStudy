@@ -1,6 +1,13 @@
-# OKStudy Android 0.2.0 — pierwsze uruchomienie na telefonie
+# OKStudy Android 0.2.1 — sprawdzenie na telefonie
 
-Zainstaluj `OKStudy-Mobile-0.2.0.apk` jako aktualizację 0.1.0. Zachowano identyfikator aplikacji i lokalny klucz podpisu, więc nie trzeba odinstalowywać poprzedniej wersji ani usuwać jej ustawień. Dla 0.2.0 nie wykonywano testów emulatora ani telefonu.
+Zakończ aktywną sesję i zainstaluj `OKStudy-Mobile-0.2.1.apk` jako aktualizację 0.1.0/0.2.0. Zachowano identyfikator aplikacji i lokalny klucz podpisu, więc nie trzeba odinstalowywać poprzedniej wersji ani usuwać konta i ustawień. Dla 0.2.1 nie uruchamiano aplikacji ani testów; kontrole działania wykonuje użytkownik.
+
+## Najpierw po aktualizacji z 0.2.0
+
+1. Pozostaw zapisane konto i model z pobranej listy. Uruchom sesję i przeanalizuj proste zadanie. Poprawna odpowiedź powinna pojawić się zamiast dawnego komunikatu „Dostawca nie ukończył analizy”.
+2. W Połączeniach pobierz modele ponownie. Po otwarciu listy status powinien wskazywać liczbę modeli, a nie nadal „Pobieram…”. Lista pochodzi z OpenAI dla tego połączenia; brak 6.1 nie oznacza ograniczenia aplikacji do 5.6.
+3. Aby sprawdzić `gpt-6.1-sol`, wybierz **Wpisz identyfikator**, wpisz tę nazwę, zatwierdź i dotknij **Zapisz połączenie**. Dostępność musi potwierdzić rzeczywiste zadanie; model może być niedostępny dla tego połączenia. Wtedy wróć do modelu z listy.
+4. Jeżeli wystąpi błąd, dotknij komunikatu na dole aplikacji i użyj **Kopiuj**. Przekaż komunikat wraz z wybranym modelem. Nie jest wymagane ponowne logowanie tylko z powodu aktualizacji.
 
 ## 1. Konto ChatGPT
 

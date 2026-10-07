@@ -1,5 +1,12 @@
 # Historia wersji
 
+## Android 0.2.1 — poprawny odbiór odpowiedzi ChatGPT
+
+- Naprawione rozpoznawanie `error: null`: pole obecne w poprawnym `response.completed` nie powoduje już komunikatu „Dostawca nie ukończył analizy”. Poprawka obejmuje również odpowiedzi OpenAI/Grok przez API. Rzeczywiste błędy i odpowiedzi nieukończone nadal są odrzucane.
+- Obsługa kodów błędów planu i pola parametru, rozróżnienie chwilowej niedostępności od braku uprawnień lub limitu. Bez wyświetlania surowych odpowiedzi, tokenów i treści zadania. Dotknięcie komunikatu otwiera pełne szczegóły z możliwością skopiowania.
+- Odświeżanie katalogu z wyłączoną pamięcią HTTP; lista nadal pochodzi z konta, bez dopisywania modeli jako rzekomo dostępnych. Po pobraniu znika komunikat „Pobieram…”. Bezpośrednio w oknie listy dodano ręczny identyfikator, np. `gpt-6.1-sol`; dostęp potwierdza dopiero wykonanie zadania.
+- VersionCode 3, zachowane konto, ustawienia i podpis aktualizacji. Przygotowano przypadki regresji dla odpowiedzi JSON/SSE i błędów; zgodnie z dyspozycją użytkownika nie uruchamiano ich, aplikacji ani emulatora. Walidacja wydania ograniczona do kompilacji release, analizy statycznej i podpisu APK.
+
 ## Android 0.2.0 — konto ChatGPT, kadr i nowy wygląd
 
 - Natywny Sign in with ChatGPT: przeglądarka, PKCE/state/nonce, walidacja podpisu/tożsamości, szyfrowane połączenia wielu kont, odnawianie sesji i wylogowanie. Modele per konto, zarządzanie użyciem, Responses SSE kończone potwierdzeniem `response.completed`; bez przełączania na API po limicie.

@@ -1,5 +1,13 @@
 # Weryfikacja OKStudy Mobile
 
+## Android 0.2.1 — poprawka po zgłoszeniu z telefonu
+
+Zrzuty użytkownika z 7 października pokazują rozpoznane konto, pobraną listę modeli i błąd „Dostawca nie ukończył analizy”. Kod 0.2.0 sprawdzał samą obecność pola `error`, co odrzucało także poprawną odpowiedź `error: null`. [Oficjalny przykład `response.completed`](https://developers.openai.com/api/reference/resources/responses/streaming-events#responsecompleted) zawiera właśnie takie pole. Poprawiono rozpoznawanie błędu i zachowano wymóg ukończonej odpowiedzi.
+
+Przygotowano `PlanHttpTest` z przypadkami: sukces JSON/SSE z `error: null`, prawdziwy błąd, niepełna odpowiedź, urwany strumień, błąd limitu po rozpoczęciu strumienia i komunikaty bez surowego payloadu. **Testów nie uruchamiano**, zgodnie z dyspozycją użytkownika. Weryfikacja wydania: kompilacja release, Android Lint, przegląd kodu i podpis APK. Nie uruchamiano aplikacji, emulatora ani wywołań AI.
+
+Przyczyny braku `gpt-6.1-sol` na tym konkretnym koncie nie da się ustalić ze zrzutów. Implementacja pobiera listę z `GET /v1/models` według [oficjalnego kontraktu](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference), bez listy wpisanej na stałe. Dodano jawne pominięcie cache HTTP, objaśnienie źródła listy i ręczny identyfikator. Ręczny wybór nie potwierdza uprawnień ani nie przełącza na API.
+
 ## Android 0.2.0 — bez uruchamiania emulatora
 
 Na wyraźną prośbę Oktawiusza nie uruchamiano emulatora, aplikacji ani testów wykonujących jej kod. Wykonano kompilację release, analizę statyczną Android Lint, przegląd kodu i weryfikację podpisu pakietu. Testy na fizycznym telefonie wykonuje użytkownik według [PHONE-TESTS.md](PHONE-TESTS.md).
