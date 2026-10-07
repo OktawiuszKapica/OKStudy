@@ -1,5 +1,15 @@
 # Weryfikacja OKStudy Mobile
 
+## Android 0.2.2 — zgłoszenie braku tekstu i nowszych modeli
+
+Użytkownik sprawdził 5.6 Sol i 5.6 Terra w 0.2.1; aplikacja zgłasza „Model nie zwrócił odpowiedzi”. Lista nadal pomija 6.1 Sol, 6 Sol i 6 Luna. Przegląd kodu wykazał, że odbiornik mobilny czytał tylko `response.completed.response.output`, ignorując tekst przesyłany w pozostałych zdarzeniach. Jest to luka implementacji; bez odpowiedzi z telefonu nie potwierdzono, że właśnie ona odpowiada za konkretny zgłoszony przebieg. Implementacja 0.2.2 zbiera fragmenty i końcowe wersje tekstu zgodnie z [opisem strumienia Responses](https://developers.openai.com/api/docs/guides/streaming-responses), nadal wymagając ukończenia i odrzucając późny błąd.
+
+Dodano źródła `ResponsesStreamTest` i `ChatGptDiagnosticsTest`: fragmenty bez powtórzenia tekstu na końcu, brak duplikacji, pusty końcowy tekst, treść z `output_item.done`, wykluczenie reasoning/narzędzi/kanału analysis, przerwany strumień, późny błąd, odmowa, sprzeczne identyfikatory wiadomości, ramki SSE, nieprawidłowy typ tekstu, pusty wynik, modele nieobecne/ukryte/widoczne, odmienny format katalogu, ograniczenie raportu do metadanych i aktualnego konta. **Przypadków nie uruchamiano.** Nie wykonano też żadnych prób aplikacji, emulatora, logowania ani wywołań AI.
+
+Nowy raport w **Połączenia → Diagnostyka ChatGPT** zapisuje wyłącznie metadane ostatniego katalogu i analizy. Lista wyboru nadal pochodzi z `models[]` z filtrem `visibility: list`. Format nazwy dopuszcza wszystkie trzy zgłoszone modele. Nie znamy jednak zawartości odpowiedzi katalogu z telefonu i nie przypisujemy braku modeli abonamentowi. Raport pozwoli odróżnić brak wpisu u źródła od jego odfiltrowania przez aplikację. [Instrukcja zebrania raportu](PHONE-TESTS.md).
+
+Kontrole przygotowania wydania zakończone 7 października 2026: `assembleRelease lintRelease` — sukces, Android Lint **0 błędów, 28 ostrzeżeń**. Zweryfikowano podpis APK v2/v3 i metadane pakietu `pl.okstudy.mobile`, versionCode 4, versionName 0.2.2. Zachowano certyfikat SHA-256 `b38137d48a977354d4807c7c9ab6578ab6afeeb9aa095ad67ce767e438ccbf0d` zgodny z poprzednim wydaniem. Pakiet `releases/OKStudy-Mobile-0.2.2.apk`: 148499 bajtów, SHA-256 `ebf2279c767950682e8490940ee1955c9359a0797641d46318643838fc8e1107`. To potwierdza przygotowanie pakietu, nie wynik analizy na prawdziwym koncie.
+
 ## Android 0.2.1 — poprawka po zgłoszeniu z telefonu
 
 Zrzuty użytkownika z 7 października pokazują rozpoznane konto, pobraną listę modeli i błąd „Dostawca nie ukończył analizy”. Kod 0.2.0 sprawdzał samą obecność pola `error`, co odrzucało także poprawną odpowiedź `error: null`. [Oficjalny przykład `response.completed`](https://developers.openai.com/api/reference/resources/responses/streaming-events#responsecompleted) zawiera właśnie takie pole. Poprawiono rozpoznawanie błędu i zachowano wymóg ukończonej odpowiedzi.

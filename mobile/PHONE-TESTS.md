@@ -1,13 +1,15 @@
-# OKStudy Android 0.2.1 — sprawdzenie na telefonie
+# OKStudy Android 0.2.2 — sprawdzenie na telefonie
 
-Zakończ aktywną sesję i zainstaluj `OKStudy-Mobile-0.2.1.apk` jako aktualizację 0.1.0/0.2.0. Zachowano identyfikator aplikacji i lokalny klucz podpisu, więc nie trzeba odinstalowywać poprzedniej wersji ani usuwać konta i ustawień. Dla 0.2.1 nie uruchamiano aplikacji ani testów; kontrole działania wykonuje użytkownik.
+Zakończ aktywną sesję i zainstaluj `OKStudy-Mobile-0.2.2.apk` jako aktualizację 0.1.0/0.2.x. Zachowano identyfikator aplikacji i lokalny klucz podpisu, więc nie trzeba odinstalowywać poprzedniej wersji ani usuwać konta i ustawień. Dla 0.2.2 nie uruchamiano aplikacji ani testów; kontrole działania wykonuje użytkownik.
 
-## Najpierw po aktualizacji z 0.2.0
+## Najpierw po aktualizacji z 0.2.1
 
-1. Pozostaw zapisane konto i model z pobranej listy. Uruchom sesję i przeanalizuj proste zadanie. Poprawna odpowiedź powinna pojawić się zamiast dawnego komunikatu „Dostawca nie ukończył analizy”.
-2. W Połączeniach pobierz modele ponownie. Po otwarciu listy status powinien wskazywać liczbę modeli, a nie nadal „Pobieram…”. Lista pochodzi z OpenAI dla tego połączenia; brak 6.1 nie oznacza ograniczenia aplikacji do 5.6.
-3. Aby sprawdzić `gpt-6.1-sol`, wybierz **Wpisz identyfikator**, wpisz tę nazwę, zatwierdź i dotknij **Zapisz połączenie**. Dostępność musi potwierdzić rzeczywiste zadanie; model może być niedostępny dla tego połączenia. Wtedy wróć do modelu z listy.
-4. Jeżeli wystąpi błąd, dotknij komunikatu na dole aplikacji i użyj **Kopiuj**. Przekaż komunikat wraz z wybranym modelem. Nie jest wymagane ponowne logowanie tylko z powodu aktualizacji.
+1. W **Połączeniach** pozostaw zapisane konto i dotknij **Pobierz modele konta**. Zamknij listę; raport zapamięta identyfikatory modeli otrzymanych od serwera oraz ich widoczność. Odświeżenie nie zmienia zapisanego modelu.
+2. Uruchom sesję i przeanalizuj proste zadanie na zapisanym modelu. Poprawka zbiera fragmenty tekstu nawet wtedy, gdy końcowe zdarzenie nie powtarza odpowiedzi. Zapisz, czy pojawia się wynik, czy błąd.
+3. Gdy nadal brakuje 6.1 Sol / 6 Sol / 6 Luna albo analiza nie działa, otwórz **Połączenia → Diagnostyka ChatGPT → Kopiuj raport** i przekaż tekst raportu. Zawiera osobno katalog oraz ostatnią analizę. Nie zawiera danych logowania, obrazu ani treści zadania i odpowiedzi. Nie zamykaj procesu aplikacji przed skopiowaniem — raport jest tylko w pamięci.
+4. Przy błędzie można dodatkowo dotknąć komunikatu na dole aplikacji i użyć **Kopiuj**. Aktualizacja nie wymaga ponownego logowania; zrób to dopiero, gdy aplikacja zgłosi faktyczne wygaśnięcie sesji.
+
+Ręczny identyfikator modelu pozostaje dostępny przez **Wpisz identyfikator → Zapisz połączenie**. Nie potwierdzono jeszcze, że wpisanie `gpt-6.1-sol` rozwiązuje zgłoszony problem, dlatego nie zastępuje to raportu katalogu.
 
 ## 1. Konto ChatGPT
 

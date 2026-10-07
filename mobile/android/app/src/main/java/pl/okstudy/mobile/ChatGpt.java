@@ -225,19 +225,31 @@ final class ChatGpt {
 
   static List<ApiClient.Model> models(Context c, String id, ApiClient.Cancel cancel)
       throws Exception {
-    JSONObject response =
-        new JSONObject(
-            PlanHttp.request(
-                RESOURCE + "/models", "GET", token(c, id, cancel), null, null, cancel));
-    JSONArray rows = response.getJSONArray("models");
-    List<ApiClient.Model> result = new ArrayList<>();
-    for (int i = 0; i < rows.length(); i++) {
-      JSONObject row = rows.getJSONObject(i);
-      String slug = row.optString("slug");
-      if (row.optString("visibility").equals("list") && ApiClient.validModel(slug))
-        result.add(new ApiClient.Model(slug, row.optString("display_name", slug)));
+    long epoch = generation;
+    String diagnostic = "Nie odebrano pełnej odpowiedzi HTTP katalogu.";
+    try {
+      PlanHttp.Reply reply =
+          PlanHttp.exchange(RESOURCE + "/models", "GET", token(c, id, cancel), null, null, cancel);
+      diagnostic = reply.describe();
+      JSONObject response = new JSONObject(reply.requireSuccess());
+      diagnostic += "\n" + ChatGptDiagnostics.catalogSummary(response);
+      JSONArray rows = response.getJSONArray("models");
+      List<ApiClient.Model> result = new ArrayList<>();
+      for (int i = 0; i < rows.length(); i++) {
+        JSONObject row = rows.optJSONObject(i);
+        if (row == null) continue;
+        String slug = row.optString("slug");
+        if (row.optString("visibility").equals("list") && ApiClient.validModel(slug))
+          result.add(new ApiClient.Model(slug, row.optString("display_name", slug)));
+      }
+      cancel.check();
+      if (epoch != generation)
+        throw new Exception("Konto zostało zmienione. Pobierz modele ponownie.");
+      return result;
+    } finally {
+      if (!cancel.cancelled && epoch == generation)
+        ChatGptDiagnostics.catalog(id, epoch, diagnostic);
     }
-    return result;
   }
 
   static String analyze(
@@ -252,19 +264,29 @@ final class ChatGpt {
     body.put("store", false);
     String access = token(c, id, cancel);
     if (epoch != generation) throw new Exception("Konto zostało zmienione. Ponów zadanie.");
-    String result =
-        PlanHttp.completed(
-            PlanHttp.request(
-                RESOURCE + "/responses",
-                "POST",
-                access,
-                "application/json",
-                body.toString(),
-                cancel),
-            only);
-    cancel.check();
-    if (epoch != generation) throw new Exception("Konto zostało zmienione. Ponów zadanie.");
-    return result;
+    ResponsesStream stream = new ResponsesStream();
+    String diagnostic = "Nie odebrano pełnej odpowiedzi HTTP analizy.";
+    try {
+      PlanHttp.Reply reply =
+          PlanHttp.exchange(
+              RESOURCE + "/responses", "POST", access, "application/json", body.toString(), cancel);
+      diagnostic = reply.describe();
+      String result = stream.read(reply.requireSuccess(), only);
+      cancel.check();
+      if (epoch != generation) throw new Exception("Konto zostało zmienione. Ponów zadanie.");
+      return result;
+    } finally {
+      if (!cancel.cancelled && epoch == generation)
+        ChatGptDiagnostics.response(
+            id,
+            epoch,
+            "Źródło: POST api.openai.com/v1/responses\nWybrany model: "
+                + model
+                + "\n"
+                + diagnostic
+                + "\n"
+                + stream.describe());
+    }
   }
 
   static final class Attempt implements AutoCloseable {

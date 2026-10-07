@@ -1,5 +1,12 @@
 # Historia wersji
 
+## Android 0.2.2 — fragmenty odpowiedzi i diagnostyka modeli
+
+- Odbiornik Responses zbiera tekst z `response.output_text.delta`, `output_text.done`, `content_part.done` i `output_item.done`, także gdy końcowe zdarzenie nie powtarza treści. Powtórzony tekst nie jest doklejany drugi raz. Wymagane pozostaje `response.completed`; urwana analiza, odmowa i późniejszy błąd są odrzucane. Reasoning, argumenty narzędzi i kanał analizy nie trafiają do wyniku.
+- Przycisk **Diagnostyka ChatGPT** w Połączeniach: metadane HTTP, liczba i typy zdarzeń, liczba odebranych znaków, identyfikatory i widoczność modeli z serwera. Raport wyróżnia brakujące 6.1 Sol, 6 Sol i 6 Luna; nie dopisuje modeli do listy wyboru i nie udaje potwierdzonego dostępu.
+- Raporty są tylko w pamięci, przypisane do aktywnego połączenia i kopiowane na żądanie. Bez tokenów, adresu konta, obrazu ani treści zadania i odpowiedzi. Otwarcie diagnostyki nie wykonuje zapytania.
+- VersionCode 4, zachowany identyfikator aplikacji i klucz podpisu. Przygotowano źródła przypadków regresji dla strumienia i raportu; nie uruchamiano testów, aplikacji, emulatora ani rzeczywistych wywołań AI. Kontrole wydania: kompilacja release, Android Lint i podpis APK. Dokładna przyczyna brakujących modeli wymaga raportu z telefonu.
+
 ## Android 0.2.1 — poprawny odbiór odpowiedzi ChatGPT
 
 - Naprawione rozpoznawanie `error: null`: pole obecne w poprawnym `response.completed` nie powoduje już komunikatu „Dostawca nie ukończył analizy”. Poprawka obejmuje również odpowiedzi OpenAI/Grok przez API. Rzeczywiste błędy i odpowiedzi nieukończone nadal są odrzucane.

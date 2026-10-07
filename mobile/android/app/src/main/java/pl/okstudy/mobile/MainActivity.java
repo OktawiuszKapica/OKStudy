@@ -536,13 +536,16 @@ public final class MainActivity extends Activity {
     modelHint.setText(
         plan
             ? "Lista pochodzi z OpenAI dla tego połączenia i może różnić się od listy w ChatGPT lub"
-                  + " Codex. Brak modelu? Wpisz jego identyfikator ręcznie; dostęp potwierdzi"
-                  + " dopiero zadanie."
+                + " Codex. Brak modelu? Wpisz jego identyfikator ręcznie; dostęp potwierdzi"
+                + " dopiero zadanie."
             : "Wybierz model obsługujący obrazy z listy dostawcy lub wpisz jego identyfikator.");
     accountBox.setVisibility(plan ? View.VISIBLE : View.GONE);
     apiBox.setVisibility(plan ? View.GONE : View.VISIBLE);
     accountBox.removeAllViews();
     if (!plan) return;
+    Button diagnostic = Design.button(this, "Diagnostyka ChatGPT", false);
+    diagnostic.setOnClickListener(v -> showChatGptDiagnostics());
+    accountBox.addView(diagnostic);
     try {
       String selected = ChatGpt.selected(this);
       org.json.JSONObject account = ChatGpt.account(this, selected);
@@ -656,6 +659,25 @@ public final class MainActivity extends Activity {
               Design.MUTED,
               false));
     }
+  }
+
+  private void showChatGptDiagnostics() {
+    String report = ChatGptDiagnostics.report(ChatGpt.selected(this), ChatGpt.generation);
+    ScrollView container = new ScrollView(this);
+    TextView text = Design.text(this, report, 12, Design.TEXT, false);
+    text.setPadding(dp(20), dp(12), dp(20), dp(12));
+    text.setTextIsSelectable(true);
+    container.addView(text);
+    new AlertDialog.Builder(this)
+        .setTitle("Diagnostyka ChatGPT")
+        .setView(container)
+        .setPositiveButton(
+            "Kopiuj raport",
+            (d, i) ->
+                ((ClipboardManager) getSystemService(CLIPBOARD_SERVICE))
+                    .setPrimaryClip(ClipData.newPlainText("OKStudy — diagnostyka", report)))
+        .setNegativeButton("Zamknij", null)
+        .show();
   }
 
   private void signIn(String account) {

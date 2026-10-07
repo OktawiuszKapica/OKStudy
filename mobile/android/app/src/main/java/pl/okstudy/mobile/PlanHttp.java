@@ -8,7 +8,35 @@ import org.json.*;
 
 /** HTTPS only, bounded responses, no redirects carrying credentials. */
 final class PlanHttp {
+  record Reply(String body, int status, String requestId, String contentType, String age) {
+    String requireSuccess() throws Exception {
+      if (status < 200 || status >= 300) throw failure(body, status);
+      return body;
+    }
+
+    String describe() {
+      String type = contentType == null ? "brak" : contentType.toLowerCase(Locale.ROOT);
+      type =
+          contentType == null
+              ? "brak"
+              : type.startsWith("text/event-stream")
+                  ? "text/event-stream"
+                  : type.startsWith("application/json") ? "application/json" : "inny";
+      String summary = "HTTP: " + status + "\nFormat: " + type;
+      if (requestId != null && requestId.matches("(?:req_[A-Za-z0-9]{1,120}|[a-fA-F0-9-]{16,64})"))
+        summary += "\nRequest ID: " + requestId;
+      if (age != null && age.matches("[0-9]{1,10}")) summary += "\nWiek cache serwera (s): " + age;
+      return summary;
+    }
+  }
+
   static String request(
+      String url, String method, String bearer, String type, String body, ApiClient.Cancel cancel)
+      throws Exception {
+    return exchange(url, method, bearer, type, body, cancel).requireSuccess();
+  }
+
+  static Reply exchange(
       String url, String method, String bearer, String type, String body, ApiClient.Cancel cancel)
       throws Exception {
     URI uri = URI.create(url);
@@ -27,6 +55,8 @@ final class PlanHttp {
       connection.setReadTimeout("auth.openai.com".equals(uri.getHost()) ? 15000 : 90000);
       connection.setRequestMethod(method);
       connection.setRequestProperty("Accept", "application/json, text/event-stream");
+      connection.setRequestProperty(
+          "User-Agent", "OKStudy/" + BuildConfig.VERSION_NAME + " Android");
       if (bearer != null) connection.setRequestProperty("Authorization", "Bearer " + bearer);
       if (body != null) {
         connection.setRequestProperty("Content-Type", type);
@@ -56,8 +86,12 @@ final class PlanHttp {
         }
       }
       cancel.check();
-      if (status < 200 || status >= 300) throw failure(result, status);
-      return result;
+      return new Reply(
+          result,
+          status,
+          connection.getHeaderField("x-request-id"),
+          connection.getContentType(),
+          connection.getHeaderField("Age"));
     } finally {
       connection.disconnect();
     }
@@ -162,30 +196,6 @@ final class PlanHttp {
   }
 
   static String completed(String stream, boolean only) throws Exception {
-    JSONObject completed = null;
-    for (String block : stream.split("\\r?\\n\\r?\\n")) {
-      StringBuilder data = new StringBuilder();
-      for (String line : block.split("\\r?\\n")) {
-        if (line.startsWith("data:")) {
-          if (data.length() > 0) data.append('\n');
-          data.append(line.substring(5).replaceFirst("^ ", ""));
-        }
-      }
-      if (data.length() == 0 || data.toString().equals("[DONE]")) continue;
-      JSONObject event = new JSONObject(data.toString());
-      String type = event.optString("type");
-      if (type.equals("response.failed")
-          || type.equals("error")
-          || type.equals("response.incomplete")) throw failure(data.toString(), 0);
-      if (type.equals("response.completed")) completed = event.getJSONObject("response");
-    }
-    if (completed == null)
-      throw new Exception(
-          "Połączenie zakończyło się przed pełną odpowiedzią ChatGPT. Spróbuj ponownie.");
-    if (completed.has("error") && !completed.isNull("error"))
-      throw failure(completed.toString(), 0);
-    String answer = ApiClient.cleanAnswer(ApiClient.extract("openai", completed), only);
-    if (answer.isEmpty()) throw new Exception("ChatGPT nie zwrócił odpowiedzi.");
-    return answer;
+    return new ResponsesStream().read(stream, only);
   }
 }
