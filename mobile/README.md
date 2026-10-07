@@ -1,8 +1,8 @@
-# OKStudy Mobile — Android 0.3.0
+# OKStudy Mobile — Android 0.3.1
 
-Android ma pływający przycisk, kadrowanie, odpowiedź nad inną aplikacją, logowanie ChatGPT, profile i dedykowane ilustracje. Wersja 0.3.0 dodaje krótszy pulpit, małe menu przy OK, kafelek szybkich ustawień, historię, ulubione modele, kontrolę czytelności kadru i niezależne sprawdzanie innym modelem. Nadal obsługuje API Gemini, Claude, OpenAI i Grok. Projekt iPhone/iPad pozostaje w źródłach 0.1.0.
+Android ma opcjonalny przycisk, kadrowanie, odpowiedź nad inną aplikacją, logowanie ChatGPT, profile i dedykowane ilustracje. Wersja 0.3.1 dodaje gesty przy krawędzi, dwa narożniki i działania analizy/kadrowania w powiadomieniu przy całkowicie ukrytym OK. Zachowuje małe menu, kafelek, historię, ulubione modele, kontrolę kadru i porównanie z 0.3.0. Nadal obsługuje API Gemini, Claude, OpenAI i Grok. Projekt iPhone/iPad pozostaje w źródłach 0.1.0.
 
-**Stan:** 0.3.0 skompilowana i podpisana na Windows. Zgodnie z dyspozycją użytkownika **nie uruchamiano Androida ani jego testów na emulatorze lub telefonie**; wykonano kompilację, Lint i kontrolę podpisu. Użytkownik potwierdził działanie poprzedniej 0.2.2. Nowe funkcje sprawdza osobiście według [PHONE-TESTS.md](PHONE-TESTS.md). Źródła Apple wymagają Maca/Xcode. [Weryfikacja i historia](TESTING.md).
+**Stan:** 0.3.1 skompilowana i podpisana na Windows. Zgodnie z dyspozycją użytkownika **nie uruchamiano Androida ani jego testów na emulatorze lub telefonie**; wykonano kompilację, Lint i kontrolę podpisu. Użytkownik potwierdził działanie poprzedniej 0.2.2. Nowe funkcje sprawdza osobiście według [PHONE-TESTS.md](PHONE-TESTS.md). Źródła Apple wymagają Maca/Xcode. [Weryfikacja i historia](TESTING.md).
 
 ## Nowy wygląd i sterowanie
 
@@ -15,13 +15,19 @@ Android ma pływający przycisk, kadrowanie, odpowiedź nad inną aplikacją, lo
 
 ## Android — instalacja
 
-1. Zakończ aktywną sesję OKStudy, przenieś `releases/OKStudy-Mobile-0.3.0.apk` na telefon i otwórz plik. Zezwól aplikacji Pliki/przeglądarce na instalację APK, jeśli Android o to poprosi. Minimum Android 8.0. Aktualizacja zachowuje podpis, identyfikator i ustawienia 0.1.0/0.2.x — nie odinstalowuj wcześniejszej wersji.
+1. Zakończ aktywną sesję OKStudy, przenieś `releases/OKStudy-Mobile-0.3.1.apk` na telefon i otwórz plik. Zezwól aplikacji Pliki/przeglądarce na instalację APK, jeśli Android o to poprosi. Minimum Android 8.0. Aktualizacja zachowuje podpis, identyfikator i ustawienia 0.1.0/0.2.x — nie odinstalowuj wcześniejszej wersji.
 2. W zakładce **Połączenia** wybierz **ChatGPT — Twój plan**, dotknij **Continue with ChatGPT** i zatwierdź połączenie w przeglądarce. Po komunikacie wróć do OKStudy. Alternatywnie wybierz dostawcę API i zapisz własny klucz. Następnie **Pobierz modele konta**, wybierz model obsługujący obrazy i **Zapisz połączenie**. Nowy identyfikator można wpisać w polu Model lub przez „Wpisz identyfikator” w oknie listy. Przykład: `gpt-6.1-sol`; dostępność potwierdza dopiero zadanie. Lista pochodzi z OpenAI dla tego połączenia, więc nie musi pokrywać się z listą w ChatGPT/Codex.
 3. Wybierz „Uruchom pomoc na ekranie”. Włącz „Wyświetlanie nad innymi aplikacjami”, zatwierdź powiadomienia i systemową zgodę na przechwytywanie. Dla działania podczas zmiany aplikacji wybierz **cały ekran**; wybranie jednej aplikacji ogranicza sesję do niej.
 4. Otwórz zadanie i **stuknij dwa razy w mały przycisk OK**. Domyślnie wybierz fragment zrzutu i zatwierdź „Analizuj zaznaczony fragment”. Pojedyncze stuknięcie i pracę bez edytora kadru ustawisz w Wyglądzie. Przeciągnięcie przesuwa przycisk; przytrzymanie otwiera aplikację albo wyjaśnienie, zgodnie z wyborem.
 5. Podczas analizy stuknięcie przycisku ją przerywa. Sesję kończy przycisk w aplikacji albo akcja „Zakończ sesję” w systemowym powiadomieniu. Kolejna sesja wymaga nowej zgody systemu.
 
 Nie jest wymagany Chrome ani moduł Windows. Nie trzeba przyznawać Dostępności ani dostępu do wszystkich plików. Możesz też udostępnić pojedynczy obraz z galerii bez uruchamiania sesji ekranu.
+
+## Obsługa bez przycisku OK
+
+Wygląd → Gesty i kadr: wybierz OK, jedną strefę, dwa narożniki lub same działania w powiadomieniu. Jedna strefa: dwa stuknięcia analizują cały udostępniony obraz, przytrzymanie wybiera fragment. Dwa narożniki: wybrany analizuje obraz, przeciwny wybiera fragment. Ustaw róg, rozmiar 24–64 dp, widoczność znacznika i wibrację. Strefy przechwytują dotyk tylko w swoich obszarach. Zmiany działają w aktywnej sesji; ukryty OK pozostaje ukryty podczas analizy, wyniku i błędu.
+
+Powiadomienie ma Analizuj ekran / Wybierz fragment oraz Przerwij analizę lub Zakończ sesję. Rozwinięte powiadomienie zamyka się przez krótkie przejście bez interfejsu przed zrzutem. Pełny obraz trafia do wybranego AI bez edytora; model ma rozwiązać jedno główne pytanie pośrodku i poprosić o fragment przy niejednoznaczności. Nie gwarantujemy rozpoznania intencji przez model. Początek nowej sesji nadal wymaga zgody Androida; nie dodano Dostępności ani ukrytego monitorowania.
 
 ## Odpowiedzi i głos
 
@@ -43,7 +49,7 @@ Katalog pobierany jest z konta dostawcy, z obsługą stronicowania. Nie ma zamkn
 
 Android utrzymuje zatwierdzoną sesję obrazu, lecz pobiera świeżą klatkę po geście. W trybie wyboru fragmentu **wysłanie do AI następuje po zatwierdzeniu kadru**. Przed pobraniem ukrywa własne nakładki. Nie nagrywa filmu ani dźwięku. Klucze/tokeny chroni Keystore. Ostatni kadr jest dostępny do wyjaśnienia/sprawdzenia przez 5 minut w RAM; wyczyszczenie, zmiana połączenia lub koniec sesji usuwa go wcześniej. Kadr nie jest zapisywany na dysku. Historia przechowuje tylko tekst: domyślnie w RAM procesu, opcjonalnie szyfrowana przez Keystore.
 
-## Nowe funkcje 0.3.0
+## Menu, historia i modele
 
 - Przytrzymaj OK: Analizuj, Powtórz, Wyjaśnij w aplikacji, Zmień profil. Menu znika po akcji/5 s. W Wyglądzie można wybrać dawną akcję przytrzymania.
 - Wygląd → Dodaj kafelek OKStudy: kafelek Androida rozpoczyna/kończy sesję. Uruchomienie nadal przechodzi przez zgody systemowe.
@@ -76,4 +82,4 @@ Alternatywnie z własnym JDK/SDK: `cd mobile/android`, następnie `./gradlew ass
 
 ## iPhone i iPad
 
-Zobacz [ios/README.md](ios/README.md). Źródła 0.1.0 Apple nie zostały zmienione przez wydanie Androida 0.3.0 i nadal wymagają klucza API. Projekt wymaga Maca, Xcode i podpisania na koncie Apple. Wynik pokazuje w aplikacji, arkuszu udostępniania albo systemowym wyniku Skrótu. Brak IPA/TestFlight w tym wydaniu.
+Zobacz [ios/README.md](ios/README.md). Źródła 0.1.0 Apple nie zostały zmienione przez wydanie Androida 0.3.1 i nadal wymagają klucza API. Projekt wymaga Maca, Xcode i podpisania na koncie Apple. Wynik pokazuje w aplikacji, arkuszu udostępniania albo systemowym wyniku Skrótu. Brak IPA/TestFlight w tym wydaniu.

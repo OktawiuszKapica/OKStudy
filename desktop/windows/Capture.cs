@@ -29,7 +29,7 @@ internal static class ImageQuality {
 
 internal sealed class CropForm : Form {
     private readonly Bitmap screenshot;
-    private readonly bool quality;
+    private readonly bool quality,immediate;
     private readonly Rectangle imageBounds;
     private Rectangle selected;
     private Point start;
@@ -37,14 +37,14 @@ internal sealed class CropForm : Form {
     private readonly Button send;
     private readonly Label hint;
     internal string ImageData;
-    internal CropForm(Bitmap frame,Rectangle desktop,bool check) {
-        screenshot=frame;quality=check;
+    internal CropForm(Bitmap frame,Rectangle desktop,bool check,bool sendOnRelease=false) {
+        screenshot=frame;quality=check;immediate=sendOnRelease;
         FormBorderStyle=FormBorderStyle.None;AutoScaleMode=AutoScaleMode.None;
         StartPosition=FormStartPosition.Manual;Bounds=desktop;TopMost=true;ShowInTaskbar=false;KeyPreview=true;DoubleBuffered=true;Cursor=Cursors.Cross;
         double scale=Math.Min(1,Math.Min((double)Width/frame.Width,(double)Height/frame.Height));
         imageBounds=new Rectangle((Width-(int)(frame.Width*scale))/2,(Height-(int)(frame.Height*scale))/2,(int)(frame.Width*scale),(int)(frame.Height*scale));
         var bar=new FlowLayoutPanel{AutoSize=true,WrapContents=false,BackColor=Theme.Bg,Padding=new Padding(12),FlowDirection=FlowDirection.LeftToRight};
-        hint=Theme.Label("Zaznacz zadanie · Enter: wyślij · Esc: anuluj",12,false);
+        hint=Theme.Label(immediate?"Zaznacz zadanie · Puść mysz: analizuj · Esc: anuluj":"Zaznacz zadanie · Enter: wyślij · Esc: anuluj",12,false);
         hint.MaximumSize=new Size(600,100);bar.Controls.Add(hint);
         send=Theme.Button("Analizuj fragment  ↵",Accept,true);send.Enabled=false;send.Width=210;bar.Controls.Add(send);
         bar.Controls.Add(Theme.Button("Anuluj",()=>Close(),false));Controls.Add(bar);
@@ -55,9 +55,9 @@ internal sealed class CropForm : Form {
     protected override void OnMouseDown(MouseEventArgs e){if(e.Button!=MouseButtons.Left)return;start=e.Location;dragging=true;acknowledged=false;selected=Rectangle.Empty;Capture=true;}
     protected override void OnMouseMove(MouseEventArgs e){if(!dragging)return;
         selected=Rectangle.Intersect(new Rectangle(Math.Min(start.X,e.X),Math.Min(start.Y,e.Y),Math.Abs(start.X-e.X),Math.Abs(start.Y-e.Y)),imageBounds);
-        send.Enabled=selected.Width>=8&&selected.Height>=8;send.Text="Analizuj fragment  ↵";hint.Text="Zaznacz zadanie · Enter: wyślij · Esc: anuluj";Invalidate();
+        send.Enabled=selected.Width>=8&&selected.Height>=8;send.Text="Analizuj fragment  ↵";hint.Text=immediate?"Puść mysz, aby przeanalizować fragment · Esc: anuluj":"Zaznacz zadanie · Enter: wyślij · Esc: anuluj";Invalidate();
     }
-    protected override void OnMouseUp(MouseEventArgs e){dragging=false;Capture=false;}
+    protected override void OnMouseUp(MouseEventArgs e){if(e.Button!=MouseButtons.Left||!dragging)return;OnMouseMove(e);dragging=false;Capture=false;if(immediate)Accept();}
     protected override void OnPaint(PaintEventArgs e){
         e.Graphics.Clear(Theme.Bg);e.Graphics.DrawImage(screenshot,imageBounds);
         using(var shade=new SolidBrush(Color.FromArgb(140,18,23,22)))e.Graphics.FillRectangle(shade,ClientRectangle);
@@ -67,7 +67,7 @@ internal sealed class CropForm : Form {
     private void Accept(){
         if(!send.Enabled)return;
         using(var crop=screenshot.Clone(SourceRect(),PixelFormat.Format32bppArgb)){
-            var warning=quality?ImageQuality.Inspect(crop):null;
+            var warning=quality&&!immediate?ImageQuality.Inspect(crop):null;
             if(warning!=null&&!acknowledged){hint.Text=warning;send.Text="Wyślij mimo ostrzeżenia";acknowledged=true;return;}
             ImageData=ImageQuality.Encode(crop);DialogResult=DialogResult.OK;Close();
         }

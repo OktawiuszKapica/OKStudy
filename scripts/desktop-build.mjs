@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 
 if (process.platform !== 'win32' || process.arch !== 'x64') throw new Error('Build on Windows x64.');
-const version = '0.2.0';
+const version = '0.2.1';
 const sdkVersion = '1.0.4258.31';
 const quote = (x) => `'${x.replaceAll("'", "''")}'`;
 const powershell = (text) => execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',text],{windowsHide:true,stdio:'inherit',env:{...process.env,PSModulePath:''}});
@@ -109,7 +109,7 @@ execFileSync(
 );
 await writeFile(
   join(root, 'README.txt'),
-  `OKStudy Windows ${version}\r\nUruchom OKStudy.exe. Ustaw połączenie i model.\r\nCtrl+Alt+O: zaznacz zadanie; Enter: wyślij; Esc: anuluj.\r\nCtrl+Alt+R: powtórz; Ctrl+Alt+K: przerwij.\r\nPrzycisk OK: kliknij, aby zaznaczyć; przeciągnij, aby przenieść; prawy przycisk: menu.\r\nZamknięcie okna chowa aplikację przy zegarze. Zakończ kończy pracę.\r\nHistoria trwała jest opcjonalna i szyfrowana. Kadr wyłącznie w RAM do 5 minut.\r\nChatGPT współdzieli lokalny magazyn kont z modułem rozszerzenia. API rozlicza się osobno.\r\nOdinstalowanie: ustawienia Windows / Aplikacje albo Uninstall.exe (wersja zainstalowana).\r\nWindows 10/11 x64 i Microsoft WebView2; instalator uzupełnia brakujący runtime.\r\nPliki OKStudy bez podpisu wydawcy.\r\n`
+  `OKStudy Windows ${version}\r\nUruchom OKStudy.exe. Ustaw połączenie i model.\r\nAlt+Z: zaznacz i puść mysz, aby od razu analizować; Esc: anuluj.\r\nAlt+X: analizuj monitor kursora lub aktywne okno. Model wybiera pytanie przy kursorze albo pośrodku.\r\nZmień skróty i ukryj przycisk OK w zakładce Skróty.\r\nCtrl+Alt+O: ręczne zaznaczenie; Enter: wyślij. Ctrl+Alt+R: powtórz; Ctrl+Alt+K: przerwij.\r\nPrzycisk OK: kliknij, aby zaznaczyć; przeciągnij, aby przenieść; prawy przycisk: menu.\r\nZamknięcie okna chowa aplikację przy zegarze. Zakończ kończy pracę.\r\nHistoria trwała jest opcjonalna i szyfrowana. Kadr wyłącznie w RAM do 5 minut.\r\nChatGPT współdzieli lokalny magazyn kont z modułem rozszerzenia. API rozlicza się osobno.\r\nOdinstalowanie: ustawienia Windows / Aplikacje albo Uninstall.exe (wersja zainstalowana).\r\nWindows 10/11 x64 i Microsoft WebView2; instalator uzupełnia brakujący runtime.\r\nPliki OKStudy bez podpisu wydawcy.\r\n`
 );
 const wizardZip=root+'.wizard.zip';
 powershell(`Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory(${quote(join(root,'ui'))},${quote(wizardZip)},[IO.Compression.CompressionLevel]::Optimal,$false)`);

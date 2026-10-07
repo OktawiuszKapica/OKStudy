@@ -1,5 +1,11 @@
 # Weryfikacja OKStudy 2
 
+## Windows 0.2.1 — opcjonalny OK i szybkie skróty
+
+Przeszło **49 testów Node**, w tym ograniczenie współrzędnych pytania na pełnym obrazie i zachowanie logowania/katalogów. **16 kontroli rzeczywistego frontendu Studio** obejmuje też zapis własnych skrótów, wybór aktywnego okna, ukrywanie/przywracanie OK i osobne polecenie analizy ekranu. Zero błędów JavaScript. Dwie próby ładowania przez `file://` zatrzymały się przed pełnym wczytaniem dokumentu; kontrola używa teraz tego samego lokalnego pochodzenia HTTPS co WebView2, z kontrolowanym podaniem plików z pamięci i zablokowaną rzeczywistą siecią.
+
+Przeszło **12 kontroli końcowej paczki Windows**, z instalacją/aktualizacją/usuwaniem oraz zachowaniem danych w izolowanym katalogu. Rozszerzono je o normalizację/odrzucanie skrótów oraz rzeczywiste zdarzenia myszy edytora: puszczenie myszy wysyła w trybie szybkim, a ręczny tryb nadal czeka. Zrzut w kontroli GDI obejmuje wyłącznie własne okno testowe. Pierwszy natywny podgląd przekroczył 45 sekund przy tworzeniu renderera; końcowy podgląd WebView2 zakończył się powodzeniem i został obejrzany. Dostęp prawdziwego konta, trafność automatycznego wyboru pytania, konflikty skrótów z oprogramowaniem użytkownika i wiele monitorów wymagają [próby użytkownika](WINDOWS-TESTS.md). Bez płatnych zapytań i bez przechwytywania ekranu użytkownika.
+
 ## Windows 0.2.0 Studio — 7 października 2026
 
 Przeszło **48 testów Node bez pominięć**, w tym regresja logowanie → pełny identyfikator aktywnego konta → natychmiastowy katalog. **13 kontroli frontendu Studio** obejmuje konto i modele, klucz API przed zapisem, ręczny wybór, Dodaj obraz, suwaki, motywy, historię i trzy rozmiary okna; zero błędów JavaScript. Konto i usługi są zastępowane kontrolowanymi danymi.

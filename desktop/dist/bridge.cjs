@@ -2805,6 +2805,13 @@ async function claude(args, key, signal, onDelta) {
 function validateTask(a) {
   if (!a || !["chatgpt", "gemini", "claude", "openai", "grok"].includes(a.provider) || !/^[\w.:/-]{1,120}$/.test(a.model) || !["express", "tutor", "hint"].includes(a.mode) || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(a.image || "") || a.image.length > 24e6 || a.provider !== "chatgpt" && (typeof a.key !== "string" || !a.key || a.key.length > 4096))
     throw new Error("Nieprawid\u0142owe zadanie lub brak po\u0142\u0105czenia.");
+  let task = "Przeanalizuj zadanie w wybranym fragmencie ekranu.";
+  if (a.fullScreen === true) {
+    const x2 = a.focusX, y2 = a.focusY;
+    if (!Number.isFinite(x2) || !Number.isFinite(y2) || x2 < 0 || x2 > 1 || y2 < 0 || y2 > 1)
+      throw new Error("Nieprawid\u0142owe wskazanie pytania.");
+    task = `To ca\u0142y ekran lub okno. Rozwi\u0105\u017C tylko jedno g\u0142\xF3wne pytanie: najbli\u017Csze punktu ${Math.round(x2 * 100)}% szeroko\u015Bci i ${Math.round(y2 * 100)}% wysoko\u015Bci obrazu, licz\u0105c od lewego g\xF3rnego rogu. Uwzgl\u0119dnij ca\u0142\u0105 tre\u015B\u0107 tego zadania i jego warianty ABCD. Pomijaj reklamy, nawigacj\u0119 i inne zadania. Je\u015Bli kilka pyta\u0144 jest r\xF3wnie blisko i nie mo\u017Cna wybra\u0107 jednego, zwr\xF3\u0107 kr\xF3tko: Wybierz fragment. Nie zgaduj, kt\xF3rego pytania dotyczy pro\u015Bba.`;
+  }
   return {
     provider: a.provider === "chatgpt" ? "openai" : a.provider,
     model: a.model,
@@ -2812,7 +2819,7 @@ function validateTask(a) {
     internet: a.internet === true,
     answerOnly: a.answerOnly === true,
     image: a.image,
-    messages: [{ role: "user", text: "Przeanalizuj zadanie w wybranym fragmencie ekranu." }]
+    messages: [{ role: "user", text: task }]
   };
 }
 function startBridge(auth = { session, signIn, signOut, selectAccount, models, accessToken }) {

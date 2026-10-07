@@ -300,7 +300,19 @@ public final class MainActivity extends Activity {
             this,
             stylePage,
             "Gesty i kadr",
-            "Przeciągnij przycisk OK, żeby zmienić jego miejsce na ekranie.");
+            "Przycisk OK jest opcjonalny. Możesz używać gestów lub samego powiadomienia.");
+    choose(presentation, "Uruchamianie analizy", "launcher",
+        new String[] {"button", "edge", "corners", "notification"},
+        new String[] {"Przycisk OK", "Jedna strefa: dwa stuknięcia / przytrzymanie", "Dwa narożniki: ekran / fragment", "Bez przycisku — działania w powiadomieniu"}, "button");
+    choose(presentation, "Strefa analizy ekranu", "zoneCorner",
+        new String[] {"top-right", "top-left", "bottom-right", "bottom-left"},
+        new String[] {"Prawy górny róg", "Lewy górny róg", "Prawy dolny róg", "Lewy dolny róg"}, "top-right");
+    slider(presentation, "Wielkość strefy dotyku", "zoneSize", 24, 64, prefs.zoneSize(), " dp", false);
+    toggle(presentation, "Pokaż delikatny znacznik strefy", "zoneVisible", true);
+    toggle(presentation, "Potwierdzaj gest krótką wibracją", "gestureHaptic", true);
+    presentation.addView(Design.text(this,
+        "Jedna strefa: dwa stuknięcia analizują cały udostępniony obraz, przytrzymanie wybiera fragment. Dwa narożniki: wybrany analizuje ekran, drugi po przeciwnej stronie wybiera fragment. Strefy zajmują mały obszar dotyku — ustaw je z dala od przycisków używanej aplikacji. Po ukryciu OK nadal działają akcje powiadomienia. Zmiany dotyczą także aktywnej sesji.",
+        12, Design.MUTED, false));
     choose(
         presentation,
         "Obraz wysyłany do AI",
@@ -1642,7 +1654,7 @@ public final class MainActivity extends Activity {
               + (prefs.model().isEmpty() ? "Wybierz model →" : prefs.model()));
     sessionState.setText(
         AppState.active
-            ? "● Sesja aktywna · przycisk działa nad innymi aplikacjami"
+            ? "● Sesja aktywna · " + (prefs.launcher().equals("button") ? "przycisk OK" : prefs.launcher().equals("notification") ? "działania w powiadomieniu" : "gesty przy krawędzi")
             : "○ Sesja wyłączona");
     if (!displayedAnswer.equals(AppState.answer)) {
       displayedAnswer = AppState.answer;

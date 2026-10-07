@@ -20,7 +20,9 @@ public final class CaptureService extends Service {
   static final String START = "pl.okstudy.START",
       STOP = "pl.okstudy.STOP",
       REPEAT = "pl.okstudy.REPEAT",
-      CANCEL = "pl.okstudy.CANCEL";
+      CANCEL = "pl.okstudy.CANCEL",
+      FULL = "pl.okstudy.FULL",
+      SELECT = "pl.okstudy.SELECT";
   private static final int NOTICE = 1701;
   private final Handler main = new Handler(Looper.getMainLooper());
   private HandlerThread framesThread;
@@ -31,6 +33,10 @@ public final class CaptureService extends Service {
   private ImageReader reader;
   private WindowManager windows;
   private TextView button, answer;
+  private TriggerZones zones;
+  private final SharedPreferences.OnSharedPreferenceChangeListener launcherListener = (store,key) -> {
+    if (java.util.Arrays.asList("launcher","zoneSize","zoneCorner","zoneVisible","gestureHaptic").contains(key)) main.post(this::refreshLauncher);
+  };
   private CropPanel cropPanel;
   private LinearLayout quickMenu;
   private final Runnable hideMenu = this::removeMenu;
@@ -50,6 +56,7 @@ public final class CaptureService extends Service {
   public void onCreate() {
     super.onCreate();
     prefs = new Prefs(this);
+    prefs.store.registerOnSharedPreferenceChangeListener(launcherListener);
     windows = (WindowManager) getSystemService(WINDOW_SERVICE);
     speech = new Speech(this);
     framesThread = new HandlerThread("OKStudy-frames");
@@ -82,6 +89,11 @@ public final class CaptureService extends Service {
         cancel();
         showAnswer(text, false);
       }
+      return START_NOT_STICKY;
+    }
+    if (FULL.equals(intent.getAction()) || SELECT.equals(intent.getAction())) {
+      if (projection != null) analyze(FULL.equals(intent.getAction()) ? "full" : "select");
+      else {AppState.error="Uruchom sesję przechwytywania w OKStudy.";stopSelf();}
       return START_NOT_STICKY;
     }
     if (!START.equals(intent.getAction()) || projection != null) return START_NOT_STICKY;
@@ -119,9 +131,12 @@ public final class CaptureService extends Service {
       Point size = screen();
       createReader(size.x, size.y, true);
       createButton();
+      zones = new TriggerZones(this, windows, prefs, () -> analyze("full"), () -> analyze("select"));
+      refreshLauncher();
       AppState.active = true;
       SessionTile.update(this);
       AppState.error = "";
+      updateNotification();
     } catch (Exception error) {
       AppState.error = message(error);
       stopSelf();
@@ -136,27 +151,41 @@ public final class CaptureService extends Service {
             0,
             new Intent(this, MainActivity.class),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    PendingIntent stop =
+    PendingIntent control =
         PendingIntent.getService(
             this,
             1,
-            new Intent(this, CaptureService.class).setAction(STOP),
+            new Intent(this, CaptureService.class).setAction(active == null ? STOP : CANCEL),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    PendingIntent cancel =
-        PendingIntent.getService(
-            this,
-            2,
-            new Intent(this, CaptureService.class).setAction(CANCEL),
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    PendingIntent full = PendingIntent.getActivity(this, 3,
+        new Intent(this, CaptureTriggerActivity.class).setAction(FULL),
+        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    PendingIntent select = PendingIntent.getActivity(this, 4,
+        new Intent(this, CaptureTriggerActivity.class).setAction(SELECT),
+        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     return new Notification.Builder(this, "screen-session")
         .setSmallIcon(R.drawable.ic_status)
         .setContentTitle("OKStudy — pomoc na ekranie")
-        .setContentText("Stuknij w przycisk, aby przeanalizować zadanie.")
+        .setContentText(active != null ? "Trwa analiza. Możesz ją przerwać." : prefs.launcher().equals("button") ? "Przycisk OK lub działania poniżej." : "Sesja aktywna. Użyj gestu lub działań poniżej.")
         .setContentIntent(open)
         .setOngoing(true)
-        .addAction(new Notification.Action.Builder(null, "Przerwij analizę", cancel).build())
-        .addAction(new Notification.Action.Builder(null, "Zakończ sesję", stop).build())
+        .addAction(new Notification.Action.Builder(null, "Analizuj ekran", full).build())
+        .addAction(new Notification.Action.Builder(null, "Wybierz fragment", select).build())
+        .addAction(new Notification.Action.Builder(null, active == null ? "Zakończ sesję" : "Przerwij analizę", control).build())
         .build();
+  }
+
+  private void updateNotification() {
+    if (projection != null && !ending) getSystemService(NotificationManager.class).notify(NOTICE, notification());
+  }
+
+  private void refreshLauncher() {
+    if (ending || button == null) return;
+    button.setVisibility(prefs.launcher().equals("button") && capture == null && cropPanel == null ? View.VISIBLE : View.GONE);
+    if (zones != null) try { zones.rebuild(screen(),capture != null || cropPanel != null); }
+    catch (Exception error) {AppState.error="Nie udało się utworzyć strefy gestu. Sprawdź pozwolenie na nakładki.";stopSelf();}
+    if (active != null && capture == null && cropPanel == null) {removeAnswer();working();}
+    else updateNotification();
   }
 
   @SuppressWarnings("deprecation")
@@ -230,6 +259,7 @@ public final class CaptureService extends Service {
           }
         });
     clampButton();
+    refreshLauncher();
     removeAnswer();
   }
 
@@ -242,6 +272,7 @@ public final class CaptureService extends Service {
       resize(p.x, p.y);
     } else {
       clampButton();
+      refreshLauncher();
       removeAnswer();
     }
   }
@@ -367,7 +398,9 @@ public final class CaptureService extends Service {
     }
   }
 
-  private void analyze() {
+  private void analyze() { analyze(prefs.cropMode()); }
+
+  private void analyze(String mode) {
     removeMenu();
     AppState.trace("analyze");
     if (ending) return;
@@ -376,7 +409,7 @@ public final class CaptureService extends Service {
       return;
     }
     try {
-      AiConnection connection = new AiConnection(this);
+      AiConnection connection = mode.equals("full") ? new AiConnection(this).withMainQuestion() : new AiConnection(this);
       ApiClient.Cancel token = new ApiClient.Cancel();
       active = token;
       capture = token;
@@ -387,8 +420,10 @@ public final class CaptureService extends Service {
       removeAnswer();
       speech.stop();
       button.setVisibility(View.INVISIBLE);
+      if (zones != null) zones.visible(false);
       AppState.error = "";
       boolean only = prefs.only();
+      updateNotification();
       frames.post(
           () -> {
             if (ending || capture != token || token.cancelled) return;
@@ -397,7 +432,7 @@ public final class CaptureService extends Service {
                 if (stale != null) captureBaseline = stale.getTimestamp();
               }
               display.setSurface(reader.getSurface());
-              frames.postDelayed(() -> grab(token, current, connection, only), 220);
+              frames.postDelayed(() -> grab(token, current, connection, only, mode), 220);
             } catch (Exception e) {
               main.post(() -> fail(token, e));
             }
@@ -419,12 +454,12 @@ public final class CaptureService extends Service {
     }
   }
 
-  private void grab(ApiClient.Cancel token, int current, AiConnection connection, boolean only) {
+  private void grab(ApiClient.Cancel token, int current, AiConnection connection, boolean only, String mode) {
     if (ending || capture != token || token.cancelled) return;
     try (Image image = reader.acquireLatestImage()) {
       if (image == null || image.getTimestamp() <= captureBaseline) {
         if (SystemClock.elapsedRealtime() - captureStarted < 3000) {
-          frames.postDelayed(() -> grab(token, current, connection, only), 80);
+          frames.postDelayed(() -> grab(token, current, connection, only, mode), 80);
           return;
         }
         throw new Exception("Nie udało się pobrać świeżego zrzutu. Spróbuj ponownie.");
@@ -438,7 +473,7 @@ public final class CaptureService extends Service {
       main.post(
           () -> {
             if (active == token && !ending) {
-              prepareTask(token, current, connection, jpeg, only);
+              prepareTask(token, current, connection, jpeg, only, mode);
             }
           });
     } catch (Exception error) {
@@ -450,10 +485,11 @@ public final class CaptureService extends Service {
   }
 
   private void prepareTask(
-      ApiClient.Cancel token, int current, AiConnection connection, String jpeg, boolean only) {
+      ApiClient.Cancel token, int current, AiConnection connection, String jpeg, boolean only, String mode) {
+    if (mode.equals("full")) {sendTask(token,current,connection,jpeg,null,only);return;}
     RectF saved = CropPanel.saved(prefs, jpeg);
     boolean readable = true;
-    if (prefs.store.getBoolean("qualityCheck", true) && !prefs.cropMode().equals("select")) {
+    if (prefs.store.getBoolean("qualityCheck", true) && !mode.equals("select")) {
       Bitmap sample = null;
       try {
         byte[] bytes =
@@ -464,7 +500,7 @@ public final class CaptureService extends Service {
             sample != null
                 && ImageQuality.inspect(
                         sample,
-                        prefs.cropMode().equals("saved") && saved != null
+                        mode.equals("saved") && saved != null
                             ? saved
                             : new RectF(0, 0, 1, 1))
                     .isEmpty();
@@ -474,11 +510,7 @@ public final class CaptureService extends Service {
         if (sample != null) sample.recycle();
       }
     }
-    if (prefs.cropMode().equals("full") && readable) {
-      sendTask(token, current, connection, jpeg, null, only);
-      return;
-    }
-    if (prefs.cropMode().equals("saved") && saved != null && readable) {
+    if (mode.equals("saved") && saved != null && readable) {
       sendTask(token, current, connection, jpeg, saved, only);
       return;
     }
@@ -513,7 +545,6 @@ public final class CaptureService extends Service {
       RectF crop,
       boolean only) {
     if (ending || active != token || token.cancelled) return;
-    button.setVisibility(View.VISIBLE);
     working();
     network.execute(
         () -> {
@@ -572,6 +603,7 @@ public final class CaptureService extends Service {
   private void working() {
     resetButton();
     if (prefs.indicator().equals("off")) return;
+    if (!prefs.launcher().equals("button")) {showAnswer(prefs.indicator().equals("full") ? "Analizuję zadanie…" : "•••",true);return;}
     button.setText("•••");
     pulse = ValueAnimator.ofFloat(.35f, 1f);
     pulse.setDuration(650);
@@ -594,12 +626,14 @@ public final class CaptureService extends Service {
       button.setAlpha(1);
       button.setText("OK");
       button.setTextColor(Design.LIME);
-      button.setVisibility(View.VISIBLE);
+      button.setVisibility(prefs.launcher().equals("button") && capture == null && cropPanel == null ? View.VISIBLE : View.GONE);
       button.setContentDescription(
           active != null
               ? "Przerwij analizę OKStudy"
               : "OKStudy. Stuknij, aby analizować. Przytrzymaj, aby otworzyć ustawienia.");
     }
+    if (zones != null) zones.visible(capture == null && cropPanel == null);
+    updateNotification();
   }
 
   private void showAnswer(String value, boolean progress) {
@@ -677,8 +711,9 @@ public final class CaptureService extends Service {
     capture = null;
     removeCrop();
     pauseFrames();
+    removeAnswer();
     resetButton();
-    if (button != null) {
+    if (button != null && prefs.launcher().equals("button")) {
       button.setText("!");
       button.setTextColor(Color.rgb(255, 193, 168));
       button.setContentDescription(AppState.error);
@@ -689,6 +724,7 @@ public final class CaptureService extends Service {
           1500);
     }
     if (prefs.indicator().equals("full")) showAnswer(AppState.error, false);
+    else if (!prefs.launcher().equals("button")) {showAnswer("!",true);main.postDelayed(hideAnswer,1500);}
   }
 
   private static String message(Exception error) {
@@ -783,6 +819,8 @@ public final class CaptureService extends Service {
   @Override
   public void onDestroy() {
     ending = true;
+    prefs.store.unregisterOnSharedPreferenceChangeListener(launcherListener);
+    if (zones != null) zones.close();
     AppState.active = false;
     SessionTile.update(this);
     AppState.clearTask();

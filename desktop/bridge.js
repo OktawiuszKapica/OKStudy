@@ -15,6 +15,13 @@ export function validateTask(a) {
     (a.provider !== 'chatgpt' && (typeof a.key !== 'string' || !a.key || a.key.length > 4096))
   )
     throw new Error('Nieprawidłowe zadanie lub brak połączenia.');
+  let task = 'Przeanalizuj zadanie w wybranym fragmencie ekranu.';
+  if (a.fullScreen === true) {
+    const x = a.focusX, y = a.focusY;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1)
+      throw new Error('Nieprawidłowe wskazanie pytania.');
+    task = `To cały ekran lub okno. Rozwiąż tylko jedno główne pytanie: najbliższe punktu ${Math.round(x * 100)}% szerokości i ${Math.round(y * 100)}% wysokości obrazu, licząc od lewego górnego rogu. Uwzględnij całą treść tego zadania i jego warianty ABCD. Pomijaj reklamy, nawigację i inne zadania. Jeśli kilka pytań jest równie blisko i nie można wybrać jednego, zwróć krótko: Wybierz fragment. Nie zgaduj, którego pytania dotyczy prośba.`;
+  }
   return {
     provider: a.provider === 'chatgpt' ? 'openai' : a.provider,
     model: a.model,
@@ -22,7 +29,7 @@ export function validateTask(a) {
     internet: a.internet === true,
     answerOnly: a.answerOnly === true,
     image: a.image,
-    messages: [{ role: 'user', text: 'Przeanalizuj zadanie w wybranym fragmencie ekranu.' }],
+    messages: [{ role: 'user', text: task }],
   };
 }
 

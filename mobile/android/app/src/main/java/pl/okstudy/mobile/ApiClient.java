@@ -98,7 +98,12 @@ final class ApiClient {
 
   static JSONObject payload(String provider, String model, String jpeg, boolean only)
       throws Exception {
-    String prompt = "Rozwiąż zadanie widoczne na tym obrazie.";
+    return payload(provider, model, jpeg, only, "");
+  }
+
+  static JSONObject payload(String provider, String model, String jpeg, boolean only, String task)
+      throws Exception {
+    String prompt = task.trim().isEmpty() ? "Rozwiąż zadanie widoczne na tym obrazie." : task;
     if (provider.equals("gemini"))
       return new JSONObject()
           .put(
@@ -173,6 +178,12 @@ final class ApiClient {
   String analyze(
       String provider, String key, String model, String jpeg, boolean only, Cancel cancel)
       throws Exception {
+    return analyze(provider, key, model, jpeg, only, cancel, "");
+  }
+
+  String analyze(
+      String provider, String key, String model, String jpeg, boolean only, Cancel cancel, String task)
+      throws Exception {
     validate(provider, key, model);
     if (jpeg.isEmpty() || jpeg.length() > 12_000_000)
       throw new Exception("Nieprawidłowy lub zbyt duży obraz.");
@@ -189,7 +200,7 @@ final class ApiClient {
     JSONObject data =
         json(
             transport.request(
-                url, "POST", headers(provider, key), payload(provider, model, jpeg, only), cancel));
+                url, "POST", headers(provider, key), payload(provider, model, jpeg, only, task), cancel));
     cancel.check();
     String answer = cleanAnswer(extract(provider, data), only);
     if (answer.isEmpty()) throw new Exception("Model nie zwrócił odpowiedzi.");

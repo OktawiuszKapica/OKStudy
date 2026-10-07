@@ -30,6 +30,13 @@ final class Prefs {
     return store.getString("cropMode", "ask");
   }
 
+  String launcher() {
+    String mode = store.getString("launcher", "button");
+    return java.util.Arrays.asList("button", "edge", "corners", "notification").contains(mode) ? mode : "button";
+  }
+
+  int zoneSize() { return Math.max(24, Math.min(64, store.getInt("zoneSize", 44))); }
+
   float answerX() {
     return Math.max(0, Math.min(1, store.getFloat("answerX", .94f)));
   }

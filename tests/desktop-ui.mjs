@@ -1,11 +1,15 @@
 import { chromium } from 'playwright';
 import { readFile,writeFile,mkdir } from 'node:fs/promises';
 import { resolve,join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 const out=resolve('artifacts/desktop/ui-verification');await mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true});const errors=[],checks=[];
 const page=await browser.newPage({viewport:{width:1024,height:744}});
+// Match WebView2's local HTTPS origin. Route only known UI files from memory;
+// no file:// loader, external server, live endpoint or account is used.
+const uiFiles=new Map();
+for(const [name,type] of [['index.html','text/html'],['app.js','text/javascript'],['studio.css','text/css'],['native.css','text/css']])uiFiles.set('/'+name,{body:await readFile(resolve('desktop/ui',name)),contentType:type});
+await page.route('**/*',route=>{const url=new URL(route.request().url()),file=url.origin==='https://okstudy.local'?uiFiles.get(url.pathname):null;return file?route.fulfill(file):route.abort();});
 page.on('pageerror',e=>errors.push(e.message));
 await page.addInitScript(()=>{
   let listener;const state={version:'0.2.0',settings:{profile:'readable',style:'text',opacity:45,textSize:18,duration:8,indicator:1,answerOnly:true,quality:true,persistentHistory:false,floating:false,tone:'graphite'},provider:'chatgpt',account:{connected:false,sharing:false,accounts:[]},catalogs:Object.fromEntries(['chatgpt','openai','gemini','claude','grok'].map(p=>[p,{models:[],favorites:[],selected:'',hasKey:false}])),history:[],answer:'',model:'',hasFrame:false,busy:false,status:'Wybierz połączenie.',error:false};
@@ -18,6 +22,7 @@ await page.addInitScript(()=>{
     if(m.action==='models'){result=structuredClone(state.catalogs[m.args.provider]);if(m.args.provider==='openai'&&m.args.key){result={models:[{id:'api-model',name:'Model API'}],selected:'api-model',favorites:[],at:Date.now(),hasKey:true};}}
     if(m.action==='saveConnection'){state.provider=m.args.provider;state.catalogs[state.provider].selected=m.args.model;state.status='Połączenie zapisane.';}
     if(m.action==='appearance'){Object.assign(state.settings,m.args);}
+    if(m.action==='shortcuts'){Object.assign(state.settings,m.args);}
     if(m.action==='favorite'){state.catalogs[m.args.provider].favorites=[m.args.model];}
     if(m.action==='history'&&m.args.operation==='open'){const r=state.history.find(x=>x.id===m.args.id);state.answer=r.text;state.model=r.model;}
     if(m.action==='history'&&m.args.operation==='pin'){const r=state.history.find(x=>x.id===m.args.id);r.pinned=!r.pinned;}
@@ -27,7 +32,7 @@ await page.addInitScript(()=>{
   Object.defineProperty(globalThis,'chrome',{value:{webview:fake},configurable:true});globalThis.__emit=send;
 });
 try{
-  await page.goto(pathToFileURL(resolve('desktop/ui/index.html')).href,{waitUntil:'domcontentloaded',timeout:60000});await page.waitForFunction(()=>document.querySelector('[data-value=status]').textContent==='Wybierz połączenie.');
+  await page.goto('https://okstudy.local/index.html',{waitUntil:'domcontentloaded',timeout:60000});await page.waitForFunction(()=>document.querySelector('[data-value=status]').textContent==='Wybierz połączenie.');
   assert.equal(await page.locator('[data-value=last-answer]').innerText(),'Tu pojawi się odpowiedź.');checks.push('real UI starts with no invented answer or connected account');
   await page.locator('[data-page=connections]').click();await page.locator('[data-action=signin]').click();await page.waitForFunction(()=>document.querySelector('[data-control=model]').value==='gpt-6.1-sol');
   assert.equal(await page.locator('[data-control=accounts]').inputValue(),'A');checks.push('login immediately renders real catalog and active account');
@@ -42,7 +47,13 @@ try{
   await page.locator('[data-page=history]').click();await page.locator('[data-control=search]').fill('Dynamika');assert.equal(await page.locator('.wv-history-row').count(),1);checks.push('history searches actual answers');await page.locator('[data-control=search]').fill('');await page.screenshot({path:join(out,'history.png')});
   await page.locator('[data-page=connections]').click();await page.locator('[data-provider=openai]').click();await page.locator('[aria-label="Klucz API"]').fill('test-key');await page.locator('[data-action=refresh]').click();await page.waitForFunction(()=>document.querySelector('[data-control=model]').value==='api-model');checks.push('API draft key catalog is available before saving');
   await page.getByText('Wpisz identyfikator modelu ręcznie',{exact:true}).click();await page.locator('[data-control=manual-model]').fill('new-model');await page.locator('[data-action=saveConnection]').click();assert.equal(await page.evaluate(()=>__state.catalogs.openai.selected),'new-model');checks.push('manual model retained without inventing availability');
-  await page.locator('[data-page=shortcuts]').click();await page.screenshot({path:join(out,'shortcuts.png')});
+  await page.locator('[data-page=shortcuts]').click();
+  assert.equal(await page.locator('[data-control=captureShortcut]').inputValue(),'Alt+Z');
+  await page.locator('[data-control=captureShortcut]').fill('Ctrl+Shift+Z');await page.locator('[data-control=screenTarget]').selectOption('window');await page.locator('[data-action=saveShortcuts]').click();await page.waitForFunction(()=>__state.settings.captureShortcut==='Ctrl+Shift+Z');
+  assert.equal(await page.locator('[data-value=capture-shortcut]').textContent(),'Ctrl+Shift+Z');assert.equal(await page.evaluate(()=>__state.settings.screenTarget),'window');checks.push('custom capture shortcut and screen target survive saving');
+  await page.locator('[data-control=floating]').check();await page.waitForFunction(()=>__state.settings.floating===true);await page.locator('[data-control=floating]').uncheck();await page.waitForFunction(()=>__state.settings.floating===false);checks.push('floating OK can be enabled and fully hidden');
+  await page.locator('[data-action=screen]').filter({visible:true}).click();assert.equal(await page.evaluate(()=>__requests.at(-1).action),'screen');checks.push('whole screen command is independent from crop capture');
+  await page.screenshot({path:join(out,'shortcuts.png')});
   for(const [width,height] of [[1024,744],[820,680],[760,580]]){await page.setViewportSize({width,height});const metrics=await page.evaluate(()=>({w:document.documentElement.scrollWidth,v:innerWidth,footer:document.querySelector('.wv-footer').getBoundingClientRect().bottom}));assert.ok(metrics.w<=width);assert.ok(metrics.footer<=height+1);checks.push(`fits ${width}x${height} without clipping footer`);}
   assert.deepEqual(errors,[]);checks.push('zero JavaScript errors');
   await writeFile(join(out,'report.json'),JSON.stringify({checks,errors,liveRequests:false},null,2));console.log(checks.map(x=>'✓ '+x).join('\n'));

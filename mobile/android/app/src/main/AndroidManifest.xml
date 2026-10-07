@@ -22,6 +22,9 @@
         </activity>
         <service android:name=".CaptureService" android:exported="false"
             android:foregroundServiceType="mediaProjection" />
+        <activity android:name=".CaptureTriggerActivity" android:exported="false"
+            android:excludeFromRecents="true" android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <service android:name=".SessionTile" android:exported="true"
             android:label="OKStudy" android:icon="@drawable/ic_status"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">

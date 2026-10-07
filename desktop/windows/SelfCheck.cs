@@ -38,8 +38,16 @@ internal static class SelfCheck {
         }}finally{System.Threading.SynchronizationContext.SetSynchronizationContext(previous);}
     }
     internal static void Run(){
+        if(Shortcut.Parse("alt+z").Text!="Alt+Z"||Shortcut.Parse("Ctrl+Alt+Shift+F10").Modifiers!=0x4007)throw new Exception("Shortcut normalization failed.");
+        foreach(string value in new[]{"Z","Alt+Alt+X","Win+X","Alt+F12","Alt+Enter"}){bool refused=false;try{Shortcut.Parse(value);}catch(Exception){refused=true;}if(!refused)throw new Exception("Invalid shortcut accepted.");}
         using(var image=new Bitmap(160,60)){using(var g=Graphics.FromImage(image))g.Clear(Color.White);if(ImageQuality.Inspect(image)==null)throw new Exception("Empty image check failed");
-            string data=ImageQuality.Encode(image);if(!data.StartsWith("data:image/png;base64,"))throw new Exception("PNG encoding failed");}
+            string data=ImageQuality.Encode(image);if(!data.StartsWith("data:image/png;base64,"))throw new Exception("PNG encoding failed");
+            foreach(bool immediate in new[]{false,true})using(var form=new CropForm(image,new Rectangle(0,0,160,60),false,immediate)){
+                var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+                typeof(CropForm).GetMethod("OnMouseDown",flags).Invoke(form,new object[]{new MouseEventArgs(MouseButtons.Left,1,10,10,0)});
+                typeof(CropForm).GetMethod("OnMouseUp",flags).Invoke(form,new object[]{new MouseEventArgs(MouseButtons.Left,1,140,50,0)});
+                if(immediate&&(form.DialogResult!=DialogResult.OK||form.ImageData==null)||!immediate&&form.ImageData!=null)throw new Exception("Mouse release capture mode failed.");
+            }}
         string path=Path.Combine(Path.GetTempPath(),"OKStudy-selfcheck-"+Guid.NewGuid().ToString("N"),"settings.dat");
         try {var store=new Store(path);store.Settings["test"]="Zażółć gęślą jaźń";store.Save();var restored=new Store(path);restored.Load();if(Data.String(restored.Settings,"test")!="Zażółć gęślą jaźń")throw new Exception("Encrypted storage failed");
             restored.Catalog("a",new List<Dictionary<string,object>>{new Dictionary<string,object>{{"id","old"},{"name","Old"}}});restored.Catalog("a",new List<Dictionary<string,object>>{new Dictionary<string,object>{{"id","old"},{"name","Old"}},new Dictionary<string,object>{{"id","new"},{"name","New"}}});

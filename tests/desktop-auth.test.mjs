@@ -4,6 +4,17 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { validateTask } from '../desktop/bridge.js';
+
+test('Windows full screen keeps a bounded question target and rejects invalid coordinates', () => {
+  const args={provider:'openai',key:'fixture',model:'fixture',mode:'express',answerOnly:true,image:'data:image/png;base64,YQ=='};
+  assert.match(validateTask(args).messages[0].text,/wybranym fragmencie/);
+  const full=validateTask({...args,fullScreen:true,focusX:.25,focusY:.75});
+  assert.match(full.messages[0].text,/25% szerokości i 75% wysokości/);
+  assert.match(full.messages[0].text,/tylko jedno/);
+  assert.match(full.messages[0].text,/Wybierz fragment/);
+  for(const focusX of [-1,2,NaN,Infinity,'0.5',undefined])assert.throws(()=>validateTask({...args,fullScreen:true,focusX,focusY:.5}));
+});
 
 test('Windows login returns active account and can immediately load its models', async () => {
   const code=`import {startBridge} from ${JSON.stringify(pathToFileURL(resolve('desktop/bridge.js')).href)};

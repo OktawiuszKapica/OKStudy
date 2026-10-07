@@ -1,6 +1,6 @@
-# OKStudy Windows 0.2.0 — Studio
+# OKStudy Windows 0.2.1 — Studio
 
-Uruchom `releases/OKStudy-Windows-0.2.0-Setup.exe`. Instalator aktualizuje poprzednią wersję, zachowuje ustawienia i dodaje aplikację do menu Start oraz listy aplikacji Windows. Alternatywnie rozpakuj `OKStudy-Windows-0.2.0-portable.zip` i uruchom `OKStudy.exe`; pliki oraz folder `ui` muszą pozostać obok programu. Windows 10/11 x64, .NET Framework 4.8 i Microsoft WebView2. Instalator pozwala uzupełnić brakujący WebView2 oficjalnym instalatorem Microsoft i zawiera własny Node. Pliki OKStudy EXE nie mają podpisu wydawcy.
+Uruchom `releases/OKStudy-Windows-0.2.1-Setup.exe`. Instalator aktualizuje poprzednią wersję, zachowuje ustawienia i dodaje aplikację do menu Start oraz listy aplikacji Windows. Alternatywnie rozpakuj `OKStudy-Windows-0.2.1-portable.zip` i uruchom `OKStudy.exe`; pliki oraz folder `ui` muszą pozostać obok programu. Windows 10/11 x64, .NET Framework 4.8 i Microsoft WebView2. Instalator pozwala uzupełnić brakujący WebView2 oficjalnym instalatorem Microsoft i zawiera własny Node. Pliki OKStudy EXE nie mają podpisu wydawcy.
 
 Widok **Studio** odtwarza zatwierdzony projekt: Manrope, boczna nawigacja, dedykowana ilustracja, grafit/limonka i jasny Papier. Ten sam renderer i styl obsługują program, instalator i deinstalator. Wersja 0.2.0 naprawia brak identyfikatora aktywnego konta po logowaniu, przez który Windows odrzucał natychmiastowe pobranie modeli. Katalog pozostaje rzeczywistą listą konta, z odświeżaniem, ulubionymi i ręcznym wyborem. Wybór jest przechowywany osobno dla konta lub klucza. Szczegóły połączenia i pełny ostatni komunikat można odczytać w aplikacji.
 
@@ -8,13 +8,17 @@ W **Połączeniach** wybierz ChatGPT lub jedno z czterech API. ChatGPT korzysta 
 
 | Działanie | Skrót |
 |---|---|
-| Zaznacz zadanie w dowolnym widocznym programie | Ctrl + Alt + O |
+| Zaznacz fragment i analizuj po puszczeniu myszy | Alt + Z |
+| Analizuj monitor kursora lub aktywne okno | Alt + X |
+| Zaznacz z ręcznym potwierdzeniem | Ctrl + Alt + O |
 | Potwierdź fragment w podglądzie | Enter |
 | Anuluj zaznaczanie | Esc |
 | Powtórz ostatnią odpowiedź bez nowego zapytania | Ctrl + Alt + R |
 | Przerwij analizę/odczyt | Ctrl + Alt + K |
 
-Przeciągnij ramkę i potwierdź. Możesz też kliknąć pływający przycisk **OK** albo **Dodaj obraz**, aby wybrać PNG/JPG/BMP. Przeciąganie OK przenosi go; prawy przycisk otwiera małe menu. Do dostawcy trafia tylko zatwierdzony fragment; cały obraz podglądu pozostaje lokalny. Kadry nie są zapisywane na dysku. Zrzut powstaje na polecenie użytkownika; aplikacja nie monitoruje ekranu stale. Chronione okna, treści DRM i ekran zabezpieczeń Windows mogą być puste/niedostępne. Układy powyżej 60 mln pikseli wymagają zmniejszenia rozdzielczości lub liczby ekranów.
+**Skróty** pozwalają zmienić Alt+Z / Alt+X i całkowicie ukryć **OK**. Kliknięcie OK lub Zaznacz zadanie działa jak szybkie zaznaczanie: puszczenie myszy wysyła fragment bez Enter i ostrzeżenia czytelności. Ctrl+Alt+O zachowuje ręczne potwierdzenie oraz ostrzeżenie. Esc anuluje bez zapytania. Skróty zajęte przez inny program są zgłaszane; nieudany zapis przywraca poprzednie kombinacje. Ctrl+Alt+R/K pozostają zarezerwowane dla powtórki/przerwania. **Dodaj obraz** otwiera PNG/JPG/BMP z ręcznym kadrowaniem. Ikona przy zegarze pozostaje dostępna przy ukrytym OK.
+
+Alt+X wysyła cały wybrany monitor lub aktywne okno bez edytora kadru. Model otrzymuje polecenie wyboru jednego pytania przy położeniu kursora lub pośrodku obrazu; przy niejednoznaczności ma odpowiedzieć „Wybierz fragment”. To wskazówka dla AI, nie gwarancja rozpoznania. Reklamy, nawigacja i inne pytania mają być pomijane. Kadry nie są zapisywane na dysku. Zrzut powstaje na polecenie użytkownika; aplikacja nie monitoruje ekranu stale. Chronione okna, treści DRM i ekran zabezpieczeń Windows mogą być puste/niedostępne. Układy powyżej 60 mln pikseli wymagają zmniejszenia rozdzielczości lub liczby ekranów.
 
 **Wygląd** pokazuje podgląd odpowiedzi na przykładowym dokumencie i pozwala ustawić sam tekst/kartę, widoczność 5–100%, wielkość, czas oraz komunikat analizy. W **Więcej ustawień** znajdziesz położenie, motyw i automatyczny głos Windows. Nad programem pozostaje tylko odpowiedź, przepuszczająca kliknięcia. Profile Dyskretny/Czytelny/Nauka zmieniają prezentację. Kropki rzeczywiście animują się i pozwalają przerwać analizę kliknięciem. Wyłączony komunikat pokazuje jedynie wykrzyknik przez 1,5 sekundy przy błędzie; pełny komunikat pozostaje w aplikacji. Rozszerzenie i Android zachowują swoje opcje głosu OpenAI.
 

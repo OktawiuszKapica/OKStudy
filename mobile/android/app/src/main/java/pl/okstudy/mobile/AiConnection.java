@@ -7,6 +7,7 @@ final class AiConnection {
   final Context context;
   final String provider, model, key, account;
   final long epoch;
+  final String task;
 
   AiConnection(Context c) throws Exception {
     context = c.getApplicationContext();
@@ -15,6 +16,7 @@ final class AiConnection {
     model = prefs.model();
     account = ChatGpt.selected(c);
     epoch = ChatGpt.generation;
+    task = "";
     key = provider.equals("chatgpt") ? "" : new Secrets(c).get(provider);
     if (provider.equals("chatgpt")) {
       ChatGpt.require(c, account);
@@ -28,23 +30,28 @@ final class AiConnection {
     if (provider.equals("chatgpt")) {
       if (epoch != ChatGpt.generation)
         throw new Exception("Konto zostało zmienione. Ponów zadanie.");
-      return ChatGpt.analyze(context, account, model, image, only, cancel);
+      return ChatGpt.analyze(context, account, model, image, only, cancel, task);
     }
-    return new ApiClient().analyze(provider, key, model, image, only, cancel);
+    return new ApiClient().analyze(provider, key, model, image, only, cancel, task);
   }
 
-  private AiConnection(AiConnection source, String selectedModel) throws Exception {
-    if (!ApiClient.validModel(selectedModel) || selectedModel.equals(source.model))
-      throw new Exception("Wybierz inny model do sprawdzenia.");
+  private AiConnection(AiConnection source, String selectedModel, String prompt) {
     context = source.context;
     provider = source.provider;
     model = selectedModel;
     key = source.key;
     account = source.account;
     epoch = source.epoch;
+    task = prompt;
   }
 
   AiConnection withModel(String selectedModel) throws Exception {
-    return new AiConnection(this, selectedModel);
+    if (!ApiClient.validModel(selectedModel) || selectedModel.equals(model))
+      throw new Exception("Wybierz inny model do sprawdzenia.");
+    return new AiConnection(this, selectedModel, task);
+  }
+
+  AiConnection withMainQuestion() {
+    return new AiConnection(this, model, "To cały ekran. Rozwiąż tylko jedno główne pytanie pośrodku obrazu, z całą jego treścią i wariantami ABCD. Pomijaj reklamy, nawigację i inne zadania. Gdy kilka pytań jest równie wyraźnych i nie można wybrać jednego, zwróć krótko: Wybierz fragment. Nie zgaduj intencji użytkownika.");
   }
 }

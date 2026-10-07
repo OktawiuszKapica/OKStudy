@@ -255,10 +255,16 @@ final class ChatGpt {
   static String analyze(
       Context c, String id, String model, String jpeg, boolean only, ApiClient.Cancel cancel)
       throws Exception {
+    return analyze(c,id,model,jpeg,only,cancel,"");
+  }
+
+  static String analyze(
+      Context c, String id, String model, String jpeg, boolean only, ApiClient.Cancel cancel, String task)
+      throws Exception {
     if (!ApiClient.validModel(model) || jpeg.isEmpty() || jpeg.length() > 12_000_000)
       throw new Exception("Nieprawidłowe zadanie.");
     long epoch = generation;
-    JSONObject body = ApiClient.payload("openai", model, jpeg, only);
+    JSONObject body = ApiClient.payload("openai", model, jpeg, only, task);
     body.remove("max_output_tokens");
     body.put("stream", true);
     body.put("store", false);

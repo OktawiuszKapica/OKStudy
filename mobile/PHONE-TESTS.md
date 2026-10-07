@@ -1,6 +1,15 @@
-# OKStudy Android 0.3.0 — sprawdzenie na telefonie
+# OKStudy Android 0.3.1 — sprawdzenie na telefonie
 
-Zakończ aktywną sesję i zainstaluj `OKStudy-Mobile-0.3.0.apk` jako aktualizację. Zachowano identyfikator i podpis — nie odinstalowuj poprzedniej wersji. Zgodnie z dyspozycją nie uruchamiano Androida, emulatora ani testów wykonujących kod aplikacji. Wykonano kompilację, Lint i kontrolę APK. Użytkownik potwierdził działanie analizy w 0.2.2; nowe funkcje sprawdza poniżej.
+Zakończ aktywną sesję i zainstaluj `OKStudy-Mobile-0.3.1.apk` jako aktualizację. Zachowano identyfikator i podpis — nie odinstalowuj poprzedniej wersji. Zgodnie z dyspozycją nie uruchamiano Androida, emulatora ani testów wykonujących kod aplikacji. Wykonano kompilację, Lint i kontrolę APK. Użytkownik potwierdził działanie analizy w 0.2.2; nowe funkcje sprawdza poniżej.
+
+## Najpierw obsługa bez OK — 0.3.1
+
+1. Wygląd → Gesty i kadr → Uruchamianie analizy. Wybierz jedną strefę: OK znika, w wybranym narożniku zostaje delikatny znacznik. Dwa stuknięcia analizują cały udostępniony obraz, przytrzymanie otwiera kadrowanie. Sprawdź wibrację i brak działania po pojedynczym stuknięciu.
+2. Wybierz dwa narożniki. Wybrany analizuje cały obraz, drugi po przeciwnej stronie na tej samej wysokości wybiera fragment. Sprawdź wszystkie rogi, rozmiary stref i obrót telefonu. Strefa przechwytuje dotyk w swoim małym obszarze; wybierz miejsce bez ważnego przycisku pod spodem.
+3. Wyłącz znacznik, potem wybierz obsługę tylko powiadomieniem. OK i strefy mają zniknąć. W powiadomieniu użyj Analizuj ekran i Wybierz fragment. Na zrzucie nie powinno być rozwiniętej szuflady powiadomień ani OKStudy. Podczas zapytania trzecia akcja przerywa analizę; poza zapytaniem kończy sesję.
+4. Sprawdź pełny / minimalny / wyłączony komunikat, sukces i błąd. Ukryty OK nie może wrócić; przy wyłączonym komunikacie błąd ma pokazać tylko ! przez 1,5 sekundy, a szczegóły pozostać w aplikacji. Zmień sposób uruchamiania podczas sesji i analizy.
+5. Cały obraz: model ma wybrać jedno główne pytanie pośrodku; przy niejednoznaczności poprosić o fragment. Wybrany fragment nadal respektuje ustawienie samej odpowiedzi. Przywróć przycisk OK i sprawdź dotychczasowe gesty/menu oraz ponowne uruchomienie z zachowanym wyborem.
+6. Zakończ sesję i sprawdź usunięcie stref. Nowa sesja wymaga zgody Androida. Wybranie jednej aplikacji w dialogu systemowym ogranicza obraz do tej aplikacji; dla różnych aplikacji wybierz cały ekran.
 
 ## Najpierw nowe funkcje 0.3.0
 
@@ -10,7 +19,7 @@ Zakończ aktywną sesję i zainstaluj `OKStudy-Mobile-0.3.0.apk` jako aktualizac
 4. Po kilku analizach: Start → Historia. Szukaj po treści/modelu, przypnij wynik, Pokaż ponownie i usuń. Powtórka nie wysyła nowego zapytania. Dawna odpowiedź z historii nie może używać obecnego kadru do wyjaśnienia.
 5. Bez trwałej historii zakończ proces aplikacji — tekst historii ma zniknąć. Włącz zapis w Wyglądzie, uzyskaj odpowiedź i zamknij proces: historia ma pozostać. Wyłącz zapis i ponownie zamknij proces: dyskowa historia nie ma wrócić.
 6. Połączenia: pobierz modele, oznacz dwa gwiazdką i przełącz nimi na Start. Zmiana konta/klucza nie może pokazać ulubionych poprzedniego połączenia. Pierwsze pobranie nie oznacza wszystkich modeli jako Nowy. Po ręcznym odświeżeniu zapisany model nie może zmienić się sam.
-7. Sprawdź mały i pusty/rozmyty kadr: popraw ramkę lub Wyślij mimo ostrzeżenia. W trybie zapisanego/całego kadru słaby obraz powinien otworzyć edytor. Po wyłączeniu kontroli kadru ostrzeżeń nie ma.
+7. Sprawdź mały i pusty/rozmyty kadr: popraw ramkę lub Wyślij mimo ostrzeżenia. W trybie zapisanego kadru słaby obraz powinien otworzyć edytor; analiza całego obrazu w 0.3.1 wysyła go bez edytora. Po wyłączeniu kontroli kadru ostrzeżeń nie ma.
 8. Po świeżej analizie: Sprawdź modelem, wybierz inny. To dodatkowe użycie planu/API. Obie odpowiedzi mają być widoczne w aplikacji, oryginalny tekst pozostaje zachowany, brak nowej nakładki nad zadaniem. Przerwij sprawdzanie i upewnij się, że nie pojawia się spóźniony wynik. Po 5 min lub zmianie konta potrzeba nowego kadru.
 
 Dalsze scenariusze obejmują funkcje z wcześniejszych wydań.

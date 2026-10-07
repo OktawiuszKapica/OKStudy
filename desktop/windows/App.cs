@@ -40,9 +40,10 @@ internal sealed class StudyForm : WebShell {
     private System.Speech.Synthesis.SpeechSynthesizer speech;
     private readonly System.Windows.Forms.Timer expiry=new System.Windows.Forms.Timer();
     private Dictionary<string,object> account=new Dictionary<string,object>(),lastSpec;
-    private string lastImage,lastAnswer="",lastModel="",secondAnswer="",secondModel="",message="Wybierz połączenie, aby zacząć.",catalogError="";
+    private string lastImage,lastAnswer="",lastModel="",secondAnswer="",secondModel="",message="Wybierz połączenie, aby zacząć.",catalogError="",hotkeyError="";
     private long imageAt;private int generation,connectionGeneration;private bool busy,capturing,exiting,managedDisposed,isError;
     private readonly HashSet<string> modelRequests=new HashSet<string>();
+    private bool editingShortcuts;
     private bool preview {get{return previewPath!=null;}}
     private string Provider {get{return Data.String(store.Settings,"provider","chatgpt");}}
     private string AccountId {get{return Data.String(account,"activeId");}}
@@ -59,9 +60,10 @@ internal sealed class StudyForm : WebShell {
         if(preview){StartPosition=FormStartPosition.Manual;Location=new Point(-32000,-32000);Fixture();}
         expiry.Interval=10000;expiry.Tick+=(s,e)=>{if(lastImage!=null&&Data.Now-imageAt>300000){ClearTask(false);Push();}};expiry.Start();
         FormClosing+=(s,e)=>{if(!exiting&&!preview){e.Cancel=true;Hide();}};
+        Deactivate+=(s,e)=>{if(editingShortcuts)EditShortcuts(false);};
     }
     private void Defaults(){
-        var d=new Dictionary<string,object>{{"style","text"},{"profile","readable"},{"opacity",45},{"textSize",18},{"duration",8},{"indicator",1},{"answerOnly",true},{"quality",true},{"tone","graphite"},{"floating",true}};
+        var d=new Dictionary<string,object>{{"style","text"},{"profile","readable"},{"opacity",45},{"textSize",18},{"duration",8},{"indicator",1},{"answerOnly",true},{"quality",true},{"tone","graphite"},{"floating",true},{"captureShortcut","Alt+Z"},{"screenShortcut","Alt+X"},{"screenTarget","monitor"},{"questionTarget","cursor"}};
         foreach(var kv in d)if(!store.Settings.ContainsKey(kv.Key))store.Settings[kv.Key]=kv.Value;
         if(!providers.Contains(Provider))store.Settings["provider"]="chatgpt";
     }
@@ -85,11 +87,11 @@ internal sealed class StudyForm : WebShell {
     protected override void ViewError(string error){Status(error,true);}
     private void Push(){
         if(disposed)return;
-        var settings=new Dictionary<string,object>(store.Settings.Where(kv=>new[]{"profile","style","opacity","textSize","duration","indicator","answerOnly","quality","persistentHistory","position","tone","floating","voice"}.Contains(kv.Key)).ToDictionary(kv=>kv.Key,kv=>kv.Value));
+        var settings=new Dictionary<string,object>(store.Settings.Where(kv=>new[]{"profile","style","opacity","textSize","duration","indicator","answerOnly","quality","persistentHistory","position","tone","floating","voice","captureShortcut","screenShortcut","screenTarget","questionTarget"}.Contains(kv.Key)).ToDictionary(kv=>kv.Key,kv=>kv.Value));
         string scope=Scope(Provider,Key(Provider));
         var catalogs=new Dictionary<string,object>();
         foreach(string p in providers){string s=Scope(p,Key(p));catalogs[p]=new{models=ModelRows(s),selected=Selected(p,Key(p)),favorites=store.Favorites(s),at=Data.Number(store.Settings,s+".at",0),hasKey=Key(p)!="",loading=modelRequests.Contains(s)};}
-        Post(new {type="state",state=new{version="0.2.0",settings=settings,provider=Provider,account=account,catalogs=catalogs,history=store.History,answer=lastAnswer,model=lastModel,secondAnswer=secondAnswer,secondModel=secondModel,hasFrame=lastImage!=null,busy=busy||capturing,status=message,error=isError,catalogError=catalogError}});
+        Post(new {type="state",state=new{version="0.2.1",settings=settings,provider=Provider,account=account,catalogs=catalogs,history=store.History,answer=lastAnswer,model=lastModel,secondAnswer=secondAnswer,secondModel=secondModel,hasFrame=lastImage!=null,busy=busy||capturing,status=message,error=isError,catalogError=catalogError,hotkeyError=hotkeyError}});
     }
     private bool Save(){if(preview)return true;try{store.Save();return true;}catch(Exception e){Status("Nie zapisano ustawień: "+e.Message,true);return false;}}
     private List<Dictionary<string,object>> ModelRows(string scope){return store.Catalog(scope).Select(row=>new Dictionary<string,object>{{"id",Data.String(row,"id")},{"name",store.ModelLabel(scope,row)}}).ToList();}
@@ -97,6 +99,7 @@ internal sealed class StudyForm : WebShell {
     private string ValidProvider(Dictionary<string,object> a){string p=Data.String(a,"provider",Provider);if(!providers.Contains(p))throw new Exception("Nieznany dostawca.");return p;}
     private string DraftKey(Dictionary<string,object> a,string p){string key=Data.String(a,"key").Trim();if(key.Length>4096)throw new Exception("Klucz jest zbyt długi.");return key!=""?key:Key(p);}
     protected override async Task<object> Command(string action,Dictionary<string,object> a) {
+        if(action=="shortcutEditing"){if(!preview)EditShortcuts(Data.Bool(a,"editing"));return null;}
         if(action=="models"){string p=ValidProvider(a),k=DraftKey(a,p);await LoadModels(p,k,Data.Bool(a,"force"));string scope=Scope(p,k);return new{models=ModelRows(scope),selected=Selected(p,k),favorites=store.Favorites(scope),at=Data.Number(store.Settings,scope+".at",0),hasKey=k!=""};}
         if(action=="signin") {
             if(busy)throw new Exception("Najpierw przerwij analizę.");Cancel(false);connectionGeneration++;ClearTask();busy=true;Status("Dokończ logowanie w przeglądarce…",false);
@@ -129,7 +132,18 @@ internal sealed class StudyForm : WebShell {
         if(action=="favorite"){
             string p=ValidProvider(a),m=Data.String(a,"model");if(!Regex.IsMatch(m,"^[\\w.:/-]{1,120}$"))throw new Exception("Wybierz model.");store.Favorite(Scope(p,DraftKey(a,p)),m);Push();return null;
         }
-        if(action=="capture"){await StartCapture();return null;}
+        if(action=="shortcuts"){
+            Dictionary<string,object> previous=new Dictionary<string,object>(store.Settings),candidate=new Dictionary<string,object>(store.Settings);
+            Shortcut select=Shortcut.Parse(Data.String(a,"captureShortcut")),screen=Shortcut.Parse(Data.String(a,"screenShortcut"));
+            if(select.Text==screen.Text||new[]{select.Text,screen.Text}.Any(x=>x=="Ctrl+Alt+R"||x=="Ctrl+Alt+K"))throw new Exception("Wybierz różne skróty. Ctrl+Alt+R i Ctrl+Alt+K są już używane.");
+            string target=Data.String(a,"screenTarget"),question=Data.String(a,"questionTarget");if(!new[]{"monitor","window"}.Contains(target)||!new[]{"cursor","center"}.Contains(question))throw new Exception("Nieprawidłowy wybór ekranu lub pytania.");
+            candidate["captureShortcut"]=select.Text;candidate["screenShortcut"]=screen.Text;candidate["screenTarget"]=target;candidate["questionTarget"]=question;
+            string error=preview?"":RegisterShortcuts(candidate);
+            if(error!=""){RegisterShortcuts(previous);hotkeyError=error;Push();throw new Exception(error);}
+            store.Settings=candidate;if(!Save()){store.Settings=previous;if(!preview)RegisterShortcuts(previous);Push();throw new Exception("Nie zapisano skrótów.");}hotkeyError="";Status("Skróty zapisane. Przycisk OK możesz ukryć poniżej.",false);return null;
+        }
+        if(action=="capture"){await StartCapture(true);return null;}
+        if(action=="screen"){await StartCapture(false,true);return null;}
         if(action=="image"){await AddImage();return null;}
         if(action=="cancel"){Cancel(true);return null;}
         if(action=="repeat"){Repeat();return null;}
@@ -176,16 +190,21 @@ internal sealed class StudyForm : WebShell {
         if(p!="chatgpt"&&Key(p)=="")throw new Exception("Zapisz klucz API w Połączeniach.");
         bool only=Data.Bool(store.Settings,"answerOnly");return new Dictionary<string,object>{{"provider",p},{"model",m},{"key",Key(p)},{"accountId",AccountId},{"mode",only?"express":"tutor"},{"answerOnly",only},{"internet",false}};
     }
-    private async Task StartCapture(){
-        if(preview||busy||capturing)return;var spec=Snapshot();capturing=true;int epoch=++generation;bool wasVisible=Visible,sent=false;
+    private async Task StartCapture(bool immediate=false,bool full=false){
+        if(preview||busy||capturing)return;var spec=Snapshot();Point focus=Cursor.Position;Rectangle monitor=Screen.FromPoint(focus).Bounds;
+        Rectangle target=full?(Data.String(store.Settings,"screenTarget")=="window"?Native.ActiveBounds(Handle):monitor):SystemInformation.VirtualScreen;
+        capturing=true;int epoch=++generation;bool wasVisible=Visible,sent=false;
         try{
             Hide();CloseOverlay();if(floating!=null)floating.Hide();await Task.Delay(230);if(epoch!=generation)return;
-            Rectangle desktop=SystemInformation.VirtualScreen;
+            if(full&&Data.String(store.Settings,"screenTarget")=="window"&&target.IsEmpty){target=Native.ActiveBounds(Handle);if(target.IsEmpty)throw new Exception("Przejdź do okna z zadaniem i użyj skrótu analizy ekranu.");}
+            if(full){bool center=Data.String(store.Settings,"questionTarget")=="center"||!target.Contains(focus);spec["fullScreen"]=true;spec["focusX"]=center ? 0.5 : Math.Max(0,Math.Min(1,(focus.X-target.Left)/(double)Math.Max(1,target.Width)));spec["focusY"]=center ? 0.5 : Math.Max(0,Math.Min(1,(focus.Y-target.Top)/(double)Math.Max(1,target.Height)));}
+            Rectangle desktop=target;
             if(desktop.Width<=0||desktop.Height<=0||(long)desktop.Width*desktop.Height>60000000)throw new Exception("Układ ekranów jest zbyt duży do przechwycenia.");
             string image;
             using(var frame=new Bitmap(desktop.Width,desktop.Height,PixelFormat.Format32bppArgb)){
                 using(var g=Graphics.FromImage(frame))g.CopyFromScreen(desktop.Location,Point.Empty,desktop.Size,CopyPixelOperation.SourceCopy);
-                using(crop=new CropForm(frame,desktop,Data.Bool(store.Settings,"quality"))){if(crop.ShowDialog()!=DialogResult.OK){if(wasVisible)Open();return;}image=crop.ImageData;}crop=null;
+                if(full)image=ImageQuality.Encode(frame);
+                else {using(crop=new CropForm(frame,desktop,Data.Bool(store.Settings,"quality"),immediate)){if(crop.ShowDialog()!=DialogResult.OK){if(wasVisible)Open();return;}image=crop.ImageData;}crop=null;}
             }
             if(epoch!=generation)return;capturing=false;sent=true;await Infer(spec,image,false,true);
         }catch(Exception e){if(!sent){Status(e.Message,true);Open();}}
@@ -229,11 +248,24 @@ internal sealed class StudyForm : WebShell {
     private void Cancel(bool notify){generation++;bridge.CancelAll();if(crop!=null)crop.Close();if(speech!=null)speech.SpeakAsyncCancelAll();busy=false;CloseOverlay();if(notify)Status("Przerwano.",false);}
     private void Open(){Show();WindowState=FormWindowState.Normal;Activate();}
     private void ApplyFloating(){if(preview||disposed)return;if(Data.Bool(store.Settings,"floating")){if(floating==null){floating=new FloatingButton(()=>RunCapture(),()=>Repeat(),()=>Open());}if(!capturing)floating.Show();}else if(floating!=null){floating.Close();floating.Dispose();floating=null;}}
-    private async void RunCapture(){try{await StartCapture();}catch(Exception e){Status(e.Message,true);Open();}}
-    private void CreateTray(){
-        if(tray!=null)return;tray=new NotifyIcon{Icon=Icon,Text="OKStudy · Ctrl+Alt+O",Visible=true};var menu=new ContextMenuStrip();menu.Items.Add("Zaznacz zadanie",null,(s,e)=>RunCapture());menu.Items.Add("Powtórz odpowiedź",null,(s,e)=>Repeat());menu.Items.Add("Otwórz OKStudy",null,(s,e)=>Open());menu.Items.Add("Zakończ",null,(s,e)=>{exiting=true;Close();});tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,e)=>Open();
-        bool ok=Native.RegisterHotKey(Handle,1,0x4003,(uint)Keys.O);ok&=Native.RegisterHotKey(Handle,2,0x4003,(uint)Keys.R);ok&=Native.RegisterHotKey(Handle,3,0x4003,(uint)Keys.K);if(!ok)Status("Jeden ze skrótów jest zajęty. Użyj przycisku OK lub ikony przy zegarze.",true);
+    private async void RunCapture(bool immediate=true,bool full=false){try{await StartCapture(immediate,full);}catch(Exception e){Status(e.Message,true);Open();}}
+    private string RegisterShortcuts(Dictionary<string,object> settings){
+        for(int i=1;i<=5;i++)if(i!=2&&i!=3)Native.UnregisterHotKey(Handle,i);
+        Shortcut select=Shortcut.Parse(Data.String(settings,"captureShortcut","Alt+Z")),screen=Shortcut.Parse(Data.String(settings,"screenShortcut","Alt+X"));var errors=new List<string>();
+        if(!Native.RegisterHotKey(Handle,1,select.Modifiers,select.Key))errors.Add(select.Text);
+        if(!Native.RegisterHotKey(Handle,4,screen.Modifiers,screen.Key))errors.Add(screen.Text);
+        if(select.Text!="Ctrl+Alt+O"&&screen.Text!="Ctrl+Alt+O")Native.RegisterHotKey(Handle,5,0x4003,(uint)Keys.O);
+        return errors.Count==0?"":"Skrót "+string.Join(", ",errors)+" jest zajęty przez inny program. Wybierz inną kombinację w Skrótach.";
     }
-    protected override void WndProc(ref Message m){if(m.Msg==0x0312){int id=m.WParam.ToInt32();if(id==1)RunCapture();if(id==2)Repeat();if(id==3)Cancel(true);}if(m.Msg==Native.OpenMessage)Open();if(m.Msg==Native.ExitMessage){exiting=true;Close();}base.WndProc(ref m);}
-    protected override void Dispose(bool disposing){if(disposing&&!managedDisposed){managedDisposed=true;expiry.Dispose();if(IsHandleCreated)for(int i=1;i<=3;i++)Native.UnregisterHotKey(Handle,i);CloseOverlay();if(floating!=null)floating.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(speech!=null)speech.Dispose();bridge.Dispose();ClearTask();}base.Dispose(disposing);}
+    private void EditShortcuts(bool editing){
+        if(editing==editingShortcuts||tray==null)return;editingShortcuts=editing;
+        if(editing){for(int i=1;i<=5;i++)Native.UnregisterHotKey(Handle,i);}
+        else{hotkeyError=RegisterShortcuts(store.Settings);Native.RegisterHotKey(Handle,2,0x4003,(uint)Keys.R);Native.RegisterHotKey(Handle,3,0x4003,(uint)Keys.K);Push();}
+    }
+    private void CreateTray(){
+        if(tray!=null)return;tray=new NotifyIcon{Icon=Icon,Text="OKStudy",Visible=true};var menu=new ContextMenuStrip();menu.Items.Add("Zaznacz zadanie",null,(s,e)=>RunCapture());menu.Items.Add("Analizuj ekran",null,(s,e)=>RunCapture(false,true));menu.Items.Add("Powtórz odpowiedź",null,(s,e)=>Repeat());menu.Items.Add("Otwórz OKStudy",null,(s,e)=>Open());menu.Items.Add("Zakończ",null,(s,e)=>{exiting=true;Close();});tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,e)=>Open();
+        hotkeyError=RegisterShortcuts(store.Settings);bool repeat=Native.RegisterHotKey(Handle,2,0x4003,(uint)Keys.R),cancel=Native.RegisterHotKey(Handle,3,0x4003,(uint)Keys.K);if(!repeat||!cancel)hotkeyError+=(hotkeyError==""?"":" ")+"Skrót powtórzenia lub przerwania jest zajęty.";if(hotkeyError!="")Status(hotkeyError,true);
+    }
+    protected override void WndProc(ref Message m){if(m.Msg==0x0312){int id=m.WParam.ToInt32();if(id==1)RunCapture();if(id==2)Repeat();if(id==3)Cancel(true);if(id==4)RunCapture(false,true);if(id==5)RunCapture(false);}if(m.Msg==Native.OpenMessage)Open();if(m.Msg==Native.ExitMessage){exiting=true;Close();}base.WndProc(ref m);}
+    protected override void Dispose(bool disposing){if(disposing&&!managedDisposed){managedDisposed=true;expiry.Dispose();if(IsHandleCreated)for(int i=1;i<=5;i++)Native.UnregisterHotKey(Handle,i);CloseOverlay();if(floating!=null)floating.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(speech!=null)speech.Dispose();bridge.Dispose();ClearTask();}base.Dispose(disposing);}
 }
