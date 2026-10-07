@@ -1,4 +1,5 @@
-// Synthetic Windows/Node integration. No screen capture, accounts or live endpoints.
+// Windows/Node integration: only an owned synthetic window is captured.
+// No user account, user screenshot or live service endpoint is used.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -90,6 +91,7 @@ try {
   assert.equal((await slow).ok, false);
   results.push('cancellation without late answer');
   const run = async (command, argumentsList) => {
+    console.log('Sprawdzam: '+argumentsList[0]);
     const p = spawn(command, argumentsList, { ...options, stdio: 'pipe' });
     let out = '';
     p.stdout.on('data', (d) => (out += d));
@@ -102,12 +104,14 @@ try {
           p.kill();
           j(new Error('Synthetic test timeout'));
         }
-      }, 30000).unref();
+      }, argumentsList[0].startsWith('--test-')?90000:60000).unref();
     });
     assert.equal(code, 0, out);
   };
   await run(join(meta.root, 'OKStudy.exe'), ['--self-check']);
   results.push('native encryption/image/catalog checks');
+  await run(join(meta.root, 'OKStudy.exe'), ['--capture-check']);
+  results.push('real Windows capture of owned test window, hotkey registration, click-through answer');
   await run(join(meta.root, 'OKStudy.exe'), ['--self-check-bridge', meta.root]);
   results.push('C# to bundled Node catalog and UTF-8 inference');
   await run(meta.setup, ['--test-install', join(output, 'install')]);
@@ -122,10 +126,16 @@ try {
       hash
     );
   results.push('installed files match payload hashes');
+  const sentinel=join(output,'settings.dat');await writeFile(sentinel,'settings remain');
+  await run(meta.setup,['--test-install',join(output,'install')]);
+  assert.equal(await readFile(sentinel,'utf8'),'settings remain');results.push('update preserves settings outside application files');
+  await run(meta.setup,['--test-uninstall',join(output,'install')]);
+  assert.equal(await readFile(sentinel,'utf8'),'settings remain');
+  const {access}=await import('node:fs/promises');await assert.rejects(access(join(output,'install/OKStudy.exe')));results.push('uninstall removes application and preserves settings');
   assert.equal(stderr, '');
   await writeFile(
     join(output, 'report.json'),
-    JSON.stringify({ passed: results, liveRequests: false, screensCaptured: false }, null, 2)
+    JSON.stringify({ version:meta.version,passed: results, liveRequests: false, userScreensCaptured: false, ownedTestWindowCaptured:true }, null, 2)
   );
   console.log(results.map((x) => '✓ ' + x).join('\n'));
 } finally {

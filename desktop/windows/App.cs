@@ -10,326 +10,230 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
 
 internal static class Program {
     [STAThread] private static int Main(string[] args) {
         Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
         try {
-            if(args.Length==2&&args[0]=="--preview"){
-                using(var form=new StudyForm(true)){
-                    form.CreateControl();foreach(Control c in form.Controls)c.CreateControl();
-                    form.StartPosition=FormStartPosition.Manual;form.Location=new Point(-32000,-32000);form.Show();Application.DoEvents();
-                    using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,new Rectangle(Point.Empty,bitmap.Size));bitmap.Save(args[1],ImageFormat.Png);}
-                    form.Close();
-                }return 0;
-            }
             if(args.Length==1&&args[0]=="--self-check"){SelfCheck.Run();return 0;}
+            if(args.Length==1&&args[0]=="--capture-check"){SelfCheck.CaptureCheck();return 0;}
             if(args.Length==2&&args[0]=="--self-check-bridge"){SelfCheck.BridgeCheck(args[1]);return 0;}
-            bool created;using(var instance=new Mutex(true,"Local\\OKStudy.Desktop."+Environment.UserName,out created)){
-                if(!created){MessageBox.Show("OKStudy już działa. Otwórz je przez ikonę przy zegarze.","OKStudy");return 0;}
-                Application.Run(new StudyForm(false));
+            if(args.Length>=2&&args[0]=="--preview") {
+                using(var form=new StudyForm(args[1],args.Length>2?args[2]:"home"))Application.Run(form);
+                return File.Exists(args[1])?0:1;
+            }
+            bool created;using(var instance=new Mutex(true,"Local\\OKStudy.Desktop."+Environment.UserName,out created)) {
+                if(!created){Native.ActivateExisting();return 0;}
+                Application.Run(new StudyForm(null,null));
             }return 0;
-        }catch(Exception e){if(args.Length==2&&args[0]=="--preview"){File.WriteAllText(args[1]+".error.txt",e.ToString());return 1;}MessageBox.Show(e.Message,"OKStudy",MessageBoxButtons.OK,MessageBoxIcon.Error);return 1;}
+        }catch(Exception e){if(args.Length>1&&args[0]=="--preview")File.WriteAllText(args[1]+".error.txt",e.ToString());else if(args.Length>0&&args[0].StartsWith("--"))Console.Error.WriteLine(e.Message);else MessageBox.Show(e.Message,"OKStudy",MessageBoxButtons.OK,MessageBoxIcon.Error);return 1;}
     }
 }
 
-internal sealed class StudyForm : Form {
-    private readonly bool preview;
+internal sealed class StudyForm : WebShell {
     private readonly Store store;
     private readonly Bridge bridge;
-    private NotifyIcon tray;
-    private AnswerOverlay overlay;
-    private CropForm cropping;
-    private readonly System.Windows.Forms.Timer expiry=new System.Windows.Forms.Timer();
-    private bool exiting,busy,loadingModels,capturing,building=true;
+    private readonly string previewPath,previewPage;
+    private readonly string[] providers={"chatgpt","openai","gemini","claude","grok"};
+    private NotifyIcon tray;private AnswerOverlay overlay;private FloatingButton floating;private CropForm crop;
     private System.Speech.Synthesis.SpeechSynthesizer speech;
-    private int generation;
-    private string lastImage,lastAnswer="",lastModel="",activeAccount="";
-    private Dictionary<string,object> lastSpec,accountStatus=new Dictionary<string,object>();
-    private long imageAt;
-    private readonly string[] providers={"chatgpt","gemini","claude","openai","grok"};
-    private readonly string[] providerNames={"ChatGPT · Twój plan","Gemini · API","Claude · API","OpenAI · API","Grok · API"};
-    private ComboBox provider,models,accounts,style,indicator,position;
-    private TextBox key,model,historySearch;
-    private NumericUpDown opacity,duration,fontSize;
-    private CheckBox answerOnly,quality,persistent;
-    private Label status,connectionLabel,currentModel;
-    private Label answer;
-    private bool managedDisposed;
-    private FlowLayoutPanel favorites,historyRows;
-    private Panel[] pages;
-    private Button[] tabs;
-    private List<Dictionary<string,object>> catalogRows=new List<Dictionary<string,object>>();
-    internal StudyForm(bool sample) {
-        preview=sample;
-        Theme.Style(this,"OKStudy · Windows",900,760);MinimumSize=new Size(800,650);
-        Icon=Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
-        string data=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OKStudy","desktop","settings.dat");
-        store=new Store(data);
-        string startupError="";
-        if(!preview)try{store.Load();}catch(Exception e){startupError="Nie odczytano ustawień: "+e.Message;}
+    private readonly System.Windows.Forms.Timer expiry=new System.Windows.Forms.Timer();
+    private Dictionary<string,object> account=new Dictionary<string,object>(),lastSpec;
+    private string lastImage,lastAnswer="",lastModel="",secondAnswer="",secondModel="",message="Wybierz połączenie, aby zacząć.",catalogError="";
+    private long imageAt;private int generation,connectionGeneration;private bool busy,capturing,exiting,managedDisposed,isError;
+    private readonly HashSet<string> modelRequests=new HashSet<string>();
+    private bool preview {get{return previewPath!=null;}}
+    private string Provider {get{return Data.String(store.Settings,"provider","chatgpt");}}
+    private string AccountId {get{return Data.String(account,"activeId");}}
+    private string Key(string p){return Data.String(Data.Object(store.Settings,"keys"),p);}
+    private string Scope(string p,string k){return store.Scope(p,AccountId,k);}
+    private string Selected(string p,string k){return Data.String(store.Settings,Scope(p,k)+".selected");}
+    internal StudyForm(string output,string screen) : base(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"ui"),"index.html",output==null?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OKStudy","desktop","webview"):Path.Combine(Path.GetTempPath(),"OKStudy-preview-"+Guid.NewGuid().ToString("N")),1024,744) {
+        previewPath=output;previewPage=screen;Text="OKStudy · Windows";
+        store=new Store(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OKStudy","desktop","settings.dat"));
+        if(!preview)try{store.Load();}catch(Exception e){message="Nie odczytano ustawień: "+e.Message;isError=true;}
+        Defaults();
         bridge=new Bridge(AppDomain.CurrentDomain.BaseDirectory);
         bridge.Authorize+=url=>Ui(()=>Process.Start(new ProcessStartInfo(url){UseShellExecute=true}));
-        Build();building=false;LoadConnection();
-        if(preview){currentModel.Text="ChatGPT · GPT-6.1 Sol";lastAnswer="D";answer.Text="D";connectionLabel.Text="Podgląd wyglądu · przykładowe dane";}
-        if(startupError!="")Status(startupError,true);
-        expiry.Interval=10000;expiry.Tick+=(s,e)=>{if(lastImage!=null&&Data.Now-imageAt>300000)ClearTask();};expiry.Start();
+        if(preview){StartPosition=FormStartPosition.Manual;Location=new Point(-32000,-32000);Fixture();}
+        expiry.Interval=10000;expiry.Tick+=(s,e)=>{if(lastImage!=null&&Data.Now-imageAt>300000){ClearTask(false);Push();}};expiry.Start();
         FormClosing+=(s,e)=>{if(!exiting&&!preview){e.Cancel=true;Hide();}};
     }
-    private void Ui(Action action){if(IsDisposed||Disposing)return;try{BeginInvoke(action);}catch(InvalidOperationException){}}
-    private void Build(){
-        var footer=new Panel{Dock=DockStyle.Bottom,Height=54,Padding=new Padding(24,6,24,6)};
-        status=Theme.Label("Ctrl + Alt + O: zaznacz zadanie · Ctrl + Alt + R: powtórz · Ctrl + Alt + K: przerwij",10,false);
-        status.Dock=DockStyle.Fill;status.AutoSize=false;footer.Controls.Add(status);Controls.Add(footer);
-        var header=new Panel{Dock=DockStyle.Top,Height=148,Padding=new Padding(24,18,24,8)};
-        var mark=new PictureBox{Location=new Point(26,24),Size=new Size(52,52),SizeMode=PictureBoxSizeMode.Zoom};
-        using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("mark.png")){if(stream!=null)mark.Image=new Bitmap(stream);}
-        header.Controls.Add(mark);
-        var title=Theme.Label("OKStudy",26,true);title.Location=new Point(92,20);header.Controls.Add(title);
-        var sub=Theme.Label("Twój mały skrót do zrozumienia.",12,false);sub.Location=new Point(94,68);header.Controls.Add(sub);
-        var strip=Theme.Row();strip.Location=new Point(24,96);strip.Width=800;
-        tabs=new Button[4];string[] names={"Start","Połączenia","Wygląd","Historia"};
-        for(int i=0;i<names.Length;i++){int tab=i;tabs[i]=Theme.Button(names[i],()=>ShowPage(tab),i==0);tabs[i].Width=184;strip.Controls.Add(tabs[i]);}
-        header.Controls.Add(strip);Controls.Add(header);
-        var body=new Panel{Dock=DockStyle.Fill,Padding=new Padding(24,8,24,8)};Controls.Add(body);body.BringToFront();
-        pages=new Panel[4];for(int i=0;i<4;i++){pages[i]=new Panel{Dock=DockStyle.Fill,AutoScroll=true,Visible=i==0};body.Controls.Add(pages[i]);}
-        var home=Theme.Column();home.Width=780;pages[0].Controls.Add(home);
-        var hero=new PictureBox{Size=new Size(780,108),SizeMode=PictureBoxSizeMode.Zoom,BackColor=Theme.Card,Margin=new Padding(0,0,0,10)};
-        using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("hero.png")){if(stream!=null)hero.Image=new Bitmap(stream);}
-        home.Controls.Add(hero);currentModel=Theme.Label("Wybierz połączenie i model",14,true);home.Controls.Add(currentModel);
-        var actions=Theme.Row();actions.Controls.Add(Theme.Button("Zaznacz zadanie",()=>StartCapture(),true));
-        actions.Controls.Add(Theme.Button("Powtórz odpowiedź",()=>Repeat(),false));
-        actions.Controls.Add(Theme.Button("Przerwij",()=>Cancel(),false));home.Controls.Add(actions);
-        home.Controls.Add(Theme.Label("Zrzut powstaje po Twoim poleceniu. Do AI trafia tylko zatwierdzony fragment.",10,false));
-        var profiles=Theme.Row();string[] ids={"discreet","readable","study","voice"},labels={"Dyskretny","Czytelny","Nauka","Głos systemu"};
-        for(int i=0;i<4;i++){string id=ids[i];profiles.Controls.Add(Theme.Button(labels[i],()=>Profile(id),false));}home.Controls.Add(profiles);
-        favorites=Theme.Row();home.Controls.Add(favorites);
-        home.Controls.Add(Theme.Label("Ostatnia odpowiedź",15,true));
-        var answerBox=new Panel{Size=new Size(780,140),AutoScroll=true,BackColor=Theme.Card};
-        answer=new Label{AutoSize=true,MaximumSize=new Size(750,0),Padding=new Padding(12),BackColor=Theme.Card,ForeColor=Theme.Text,Font=new Font("Segoe UI",14)};
-        answerBox.Controls.Add(answer);home.Controls.Add(answerBox);var follow=Theme.Row();
-        follow.Controls.Add(Theme.Button("Kopiuj",()=>{if(lastAnswer!="")Clipboard.SetText(lastAnswer);},false));
-        follow.Controls.Add(Theme.Button("Wyjaśnij",()=>Explain(),false));
-        follow.Controls.Add(Theme.Button("Sprawdź innym modelem",()=>Verify(),false));
-        follow.Controls.Add(Theme.Button("Wyczyść",()=>{lastAnswer="";answer.Text="";ClearTask();CloseOverlay();Status("Usunięto odpowiedź i kadr.",false);},false));home.Controls.Add(follow);
-        var connections=Theme.Column();pages[1].Controls.Add(connections);
-        connections.Controls.Add(Theme.Label("Twoje AI. Twój wybór.",22,true));
-        connections.Controls.Add(Theme.Label("Plan ChatGPT lub osobno rozliczane API. Połączenie nigdy nie przełącza się samo.",11,false));
-        provider=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=600};provider.Items.AddRange(providerNames);connections.Controls.Add(provider);
-        connectionLabel=Theme.Label("",11,false);connectionLabel.MaximumSize=new Size(760,80);connections.Controls.Add(connectionLabel);
-        accounts=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=600};connections.Controls.Add(accounts);
-        var auth=Theme.Row();auth.Controls.Add(Theme.Button("Continue with ChatGPT",()=>SignIn(false),true));auth.Controls.Add(Theme.Button("Dodaj konto",()=>SignIn(true),false));
-        auth.Controls.Add(Theme.Button("Zarządzaj użyciem ↗",()=>Process.Start(new ProcessStartInfo("https://chatgpt.com/settings/usage"){UseShellExecute=true}),false));
-        auth.Controls.Add(Theme.Button("Wyloguj konto",()=>SignOut(),false));connections.Controls.Add(auth);
-        connections.Controls.Add(Theme.Label("Klucz API · puste pole zachowuje zapisany klucz",11,false));key=Theme.Input(true);connections.Controls.Add(key);
-        connections.Controls.Add(Theme.Label("Model · aktualna lista pochodzi od dostawcy",11,false));
-        models=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=600};connections.Controls.Add(models);
-        model=Theme.Input(false);connections.Controls.Add(model);
-        var modelActions=Theme.Row();modelActions.Controls.Add(Theme.Button("Odśwież modele",()=>LoadModels(true),false));
-        modelActions.Controls.Add(Theme.Button("★ Ulubiony",()=>Favorite(),false));modelActions.Controls.Add(Theme.Button("Zapisz połączenie",()=>SaveConnection(),true));connections.Controls.Add(modelActions);
-        connections.Controls.Add(Theme.Label("Nie ma modelu na liście? Wpisz identyfikator. Dostęp potwierdzi dopiero zapytanie.",10,false));
-        provider.SelectedIndexChanged+=(s,e)=>{if(building)return;Cancel();ClearTask();LoadConnection();};
-        models.SelectedIndexChanged+=(s,e)=>{if(models.SelectedIndex>=0&&models.SelectedIndex<catalogRows.Count)model.Text=Data.String(catalogRows[models.SelectedIndex],"id");};
-        accounts.SelectedIndexChanged+=(s,e)=>{if(!building&&accounts.SelectedIndex>=0)SelectAccount();};
-        var looks=Theme.Column();pages[2].Controls.Add(looks);looks.Controls.Add(Theme.Label("Tak dyskretnie, jak potrzebujesz.",22,true));
-        answerOnly=new CheckBox{Text="Tylko odpowiedź, bez wyjaśnień",AutoSize=true,Checked=!store.Settings.ContainsKey("answerOnly")||Data.Bool(store.Settings,"answerOnly")};looks.Controls.Add(answerOnly);
-        style=Chooser(looks,"Prezentacja",new[]{"Karta","Sam tekst"},Data.String(store.Settings,"style","card")=="card"?0:1);
-        position=Chooser(looks,"Pozycja",new[]{"Dół ekranu","Góra ekranu"},Data.String(store.Settings,"position")=="top"?1:0);
-        indicator=Chooser(looks,"Analizowanie",new[]{"Pełny komunikat","Małe kropki","Wyłączone · krótki ! przy błędzie"},(int)Data.Number(store.Settings,"indicator",1));
-        opacity=Number(looks,"Widoczność odpowiedzi (%)",5,100,Data.Number(store.Settings,"opacity",80));
-        fontSize=Number(looks,"Rozmiar tekstu",11,28,Data.Number(store.Settings,"textSize",18));duration=Number(looks,"Czas odpowiedzi (sekundy)",3,30,Data.Number(store.Settings,"duration",8));
-        quality=new CheckBox{Text="Ostrzegaj o małym, pustym lub słabo czytelnym kadrze",AutoSize=true,Checked=!store.Settings.ContainsKey("quality")||Data.Bool(store.Settings,"quality")};looks.Controls.Add(quality);
-        persistent=new CheckBox{Text="Zachowuj historię po zamknięciu · szyfrowana na tym komputerze",AutoSize=true,Checked=Data.Bool(store.Settings,"persistentHistory")};looks.Controls.Add(persistent);
-        looks.Controls.Add(Theme.Button("Zapisz wygląd",()=>SaveAppearance(),true));
-        looks.Controls.Add(Theme.Label("Historia zapisuje tylko tekst. Ostatni kadr pozostaje w pamięci do 5 minut.",11,false));
-        var history=Theme.Column();pages[3].Controls.Add(history);history.Controls.Add(Theme.Label("Wróć do odpowiedzi bez nowego zapytania.",20,true));
-        historySearch=Theme.Input(false);history.Controls.Add(historySearch);historySearch.TextChanged+=(s,e)=>RenderHistory();
-        history.Controls.Add(Theme.Button("Wyczyść historię",()=>{if(MessageBox.Show("Usunąć wszystkie zapisane odpowiedzi?","OKStudy",MessageBoxButtons.YesNo)==DialogResult.Yes){store.History.Clear();Save();RenderHistory();}},false));
-        historyRows=Theme.Column();history.Controls.Add(historyRows);
+    private void Defaults(){
+        var d=new Dictionary<string,object>{{"style","text"},{"profile","readable"},{"opacity",45},{"textSize",18},{"duration",8},{"indicator",1},{"answerOnly",true},{"quality",true},{"tone","graphite"},{"floating",true}};
+        foreach(var kv in d)if(!store.Settings.ContainsKey(kv.Key))store.Settings[kv.Key]=kv.Value;
+        if(!providers.Contains(Provider))store.Settings["provider"]="chatgpt";
     }
-    private ComboBox Chooser(Control parent,string name,string[] names,int selected){parent.Controls.Add(Theme.Label(name,11,false));var box=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=600};box.Items.AddRange(names);box.SelectedIndex=Math.Max(0,Math.Min(names.Length-1,selected));parent.Controls.Add(box);return box;}
-    private NumericUpDown Number(Control parent,string name,int min,int max,long value){parent.Controls.Add(Theme.Label(name,11,false));var n=new NumericUpDown{Minimum=min,Maximum=max,Value=Math.Max(min,Math.Min(max,value)),Width=160,BackColor=Theme.Card,ForeColor=Theme.Text};parent.Controls.Add(n);return n;}
-    private void Status(string value,bool error){status.Text=value;status.ForeColor=error?Color.FromArgb(255,193,168):Theme.Muted;}
-    private void ShowPage(int index){for(int i=0;i<4;i++){pages[i].Visible=i==index;tabs[i].BackColor=i==index?Theme.Lime:Theme.Card;tabs[i].ForeColor=i==index?Theme.Bg:Theme.Text;}
-        if(index==1&&!preview)LoadModels(false);if(index==3)RenderHistory();}
-    private string Provider {get{return provider.SelectedIndex<0?"chatgpt":providers[provider.SelectedIndex];}}
-    private string SavedKey {get{return Data.String(Data.Object(store.Settings,"keys"),Provider);}}
-    private string CatalogKey {get{return key!=null&&key.Text.Trim()!=""?key.Text.Trim():SavedKey;}}
-    private string Scope {get{return store.Scope(Provider,activeAccount,CatalogKey);}}
-    private void LoadConnection(){
-        building=true;
-        if(provider.SelectedIndex<0)provider.SelectedIndex=Math.Max(0,Array.IndexOf(providers,Data.String(store.Settings,"provider","chatgpt")));
-        store.Settings["provider"]=Provider;key.Text="";key.Enabled=Provider!="chatgpt";accounts.Enabled=Provider=="chatgpt";
-        model.Text=Data.String(Data.Object(store.Settings,"models"),Provider);building=false;
-        connectionLabel.Text=Provider=="chatgpt"?"Połącz konto albo wybierz konto z lokalnego modułu OKStudy.":"Klucz będzie szyfrowany dla Twojego konta Windows. API ma osobne rozliczenie.";
-        RefreshCatalog();currentModel.Text=providerNames[provider.SelectedIndex]+" · "+model.Text;
+    private void Fixture(){
+        account=new Dictionary<string,object>{{"connected",true},{"sharing",true},{"activeId","preview"},{"email","Konto ChatGPT"},{"accounts",new[]{new Dictionary<string,object>{{"id","preview"},{"label","Konto ChatGPT"}}}}};
+        store.Settings[Scope("chatgpt","")]=new[]{new Dictionary<string,object>{{"id","model-z-konta"},{"name","Model z konta"}}};
+        store.Settings[Scope("chatgpt","")+".selected"]="model-z-konta";
+        lastAnswer="D";lastModel="Model z konta";message="Podgląd wyglądu · przykładowe dane";
+        store.History=new List<Dictionary<string,object>>{new Dictionary<string,object>{{"id","preview"},{"text","D"},{"model","Model z konta"},{"at",Data.Now},{"pinned",true}}};
     }
-    private bool SaveConnection(){
-        if(!Regex.IsMatch(model.Text.Trim(),"^[\\w.:/-]{1,120}$")){Status("Wybierz lub wpisz prawidłowy model.",true);return false;}
-        if(Provider=="chatgpt"&&(!Data.Bool(accountStatus,"connected")||!Data.Bool(accountStatus,"sharing"))){Status("Połącz konto i udziel dostępu do planu ChatGPT.",true);return false;}
-        var keys=Data.Object(store.Settings,"keys");if(Provider!="chatgpt"){
-            if(key.Text.Trim()!="")keys[Provider]=key.Text.Trim();
-            if(Data.String(keys,Provider)==""){Status("Wklej klucz API dla wybranego dostawcy.",true);return false;}
+    protected override async Task ViewReady(){
+        Push();
+        if(preview){Post(new{type="page",page=previewPage});await Task.Delay(750);await web.CoreWebView2.ExecuteScriptAsync("document.fonts.ready.then(()=>true)");using(var output=File.Create(previewPath))await web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,output);exiting=true;Close();return;}
+        Native.Exclude(this);CreateTray();ApplyFloating();
+        try{account=await bridge.Call("status",null);MigrateModels();Push();await LoadModels(Provider,Key(Provider),false);}catch(Exception e){Status(e.Message,true);}
+    }
+    protected override void CloseAfterFailure(){exiting=true;base.CloseAfterFailure();}
+    protected override void Trace(string text){if(previewPath!=null)File.AppendAllText(previewPath+".trace.txt",text+Environment.NewLine);}
+    private void Ui(Action a){if(disposed)return;try{BeginInvoke(a);}catch(InvalidOperationException){}}
+    private void Status(string text,bool error){message=text;isError=error;Push();}
+    protected override void ViewError(string error){Status(error,true);}
+    private void Push(){
+        if(disposed)return;
+        var settings=new Dictionary<string,object>(store.Settings.Where(kv=>new[]{"profile","style","opacity","textSize","duration","indicator","answerOnly","quality","persistentHistory","position","tone","floating","voice"}.Contains(kv.Key)).ToDictionary(kv=>kv.Key,kv=>kv.Value));
+        string scope=Scope(Provider,Key(Provider));
+        var catalogs=new Dictionary<string,object>();
+        foreach(string p in providers){string s=Scope(p,Key(p));catalogs[p]=new{models=ModelRows(s),selected=Selected(p,Key(p)),favorites=store.Favorites(s),at=Data.Number(store.Settings,s+".at",0),hasKey=Key(p)!="",loading=modelRequests.Contains(s)};}
+        Post(new {type="state",state=new{version="0.2.0",settings=settings,provider=Provider,account=account,catalogs=catalogs,history=store.History,answer=lastAnswer,model=lastModel,secondAnswer=secondAnswer,secondModel=secondModel,hasFrame=lastImage!=null,busy=busy||capturing,status=message,error=isError,catalogError=catalogError}});
+    }
+    private bool Save(){if(preview)return true;try{store.Save();return true;}catch(Exception e){Status("Nie zapisano ustawień: "+e.Message,true);return false;}}
+    private List<Dictionary<string,object>> ModelRows(string scope){return store.Catalog(scope).Select(row=>new Dictionary<string,object>{{"id",Data.String(row,"id")},{"name",store.ModelLabel(scope,row)}}).ToList();}
+    private void MigrateModels(){var legacy=Data.Object(store.Settings,"models");bool changed=false;foreach(string p in providers){string id=Data.String(legacy,p);if(id==""||p=="chatgpt"&&AccountId=="")continue;string scope=Scope(p,Key(p));if(Selected(p,Key(p))=="")store.Settings[scope+".selected"]=id;legacy.Remove(p);changed=true;}if(changed){if(legacy.Count==0)store.Settings.Remove("models");Save();}}
+    private string ValidProvider(Dictionary<string,object> a){string p=Data.String(a,"provider",Provider);if(!providers.Contains(p))throw new Exception("Nieznany dostawca.");return p;}
+    private string DraftKey(Dictionary<string,object> a,string p){string key=Data.String(a,"key").Trim();if(key.Length>4096)throw new Exception("Klucz jest zbyt długi.");return key!=""?key:Key(p);}
+    protected override async Task<object> Command(string action,Dictionary<string,object> a) {
+        if(action=="models"){string p=ValidProvider(a),k=DraftKey(a,p);await LoadModels(p,k,Data.Bool(a,"force"));string scope=Scope(p,k);return new{models=ModelRows(scope),selected=Selected(p,k),favorites=store.Favorites(scope),at=Data.Number(store.Settings,scope+".at",0),hasKey=k!=""};}
+        if(action=="signin") {
+            if(busy)throw new Exception("Najpierw przerwij analizę.");Cancel(false);connectionGeneration++;ClearTask();busy=true;Status("Dokończ logowanie w przeglądarce…",false);
+            try{account=await bridge.Call("signin",new Dictionary<string,object>{{"accountId",Data.Bool(a,"additional")?"__new":AccountId}});MigrateModels();store.Settings["provider"]="chatgpt";catalogError="";Push();await LoadModels("chatgpt","",true);Status("Konto połączone. Wybierz model i zapisz połączenie.",false);}finally{busy=false;Push();}return null;
         }
-        Cancel();ClearTask();store.Settings["keys"]=keys;var choices=Data.Object(store.Settings,"models");choices[Provider]=model.Text.Trim();
-        store.Settings["models"]=choices;store.Settings["provider"]=Provider;key.Text="";
-        if(!Save())return false;RefreshCatalog();currentModel.Text=providerNames[provider.SelectedIndex]+" · "+model.Text;Status("Połączenie zapisane.",false);return true;
+        if(action=="account"||action=="signout"){
+            if(busy)throw new Exception("Najpierw przerwij analizę.");Cancel(false);ClearTask();connectionGeneration++;
+            account=await bridge.Call(action=="account"?"select":"signout",new Dictionary<string,object>{{"accountId",Data.String(a,"accountId")}});Push();if(action=="account")await LoadModels("chatgpt","",false);else Status("Konto odłączone.",false);return null;
+        }
+        if(action=="saveConnection"){
+            string p=ValidProvider(a),k=DraftKey(a,p),m=Data.String(a,"model").Trim();
+            if(!Regex.IsMatch(m,"^[\\w.:/-]{1,120}$"))throw new Exception("Wybierz lub wpisz model.");
+            if(p=="chatgpt"&&(!Data.Bool(account,"connected")||!Data.Bool(account,"sharing")||AccountId==""))throw new Exception("Połącz konto i udziel dostępu do planu ChatGPT.");
+            if(p!="chatgpt"&&k=="")throw new Exception("Wklej klucz API.");
+            var previous=new Dictionary<string,object>(store.Settings);
+            Cancel(false);connectionGeneration++;ClearTask();store.Settings["provider"]=p;var keys=new Dictionary<string,object>(Data.Object(store.Settings,"keys"));if(p!="chatgpt")keys[p]=k;store.Settings["keys"]=keys;
+            store.Settings[Scope(p,k)+".selected"]=m;
+            if(!Save()){store.Settings=previous;Push();throw new Exception("Zapis połączenia nie powiódł się.");}catalogError="";Status("Połączenie zapisane.",false);return null;
+        }
+        if(action=="appearance"){
+            var previous=new Dictionary<string,object>(store.Settings);
+            foreach(string n in new[]{"answerOnly","quality","persistentHistory","floating","voice"})if(a.ContainsKey(n))store.Settings[n]=Data.Bool(a,n);
+            foreach(var rule in new[]{new[]{"opacity","5","100"},new[]{"textSize","12","26"},new[]{"duration","3","30"},new[]{"indicator","0","2"}})if(a.ContainsKey(rule[0]))store.Settings[rule[0]]=(int)Math.Max(int.Parse(rule[1]),Math.Min(int.Parse(rule[2]),Data.Number(a,rule[0],18)));
+            foreach(string n in new[]{"style","profile","position","tone"})if(a.ContainsKey(n)){
+                var allowed=n=="style"?new[]{"text","card"}:n=="profile"?new[]{"discreet","readable","study"}:n=="position"?new[]{"top","bottom"}:new[]{"system","graphite","paper"};
+                if(!allowed.Contains(Data.String(a,n)))throw new Exception("Nieprawidłowe ustawienie wyglądu.");store.Settings[n]=Data.String(a,n);
+            }
+            if(!Save()){store.Settings=previous;Push();throw new Exception("Zapis wyglądu nie powiódł się.");}ApplyFloating();Status("Wygląd zapisany.",false);return null;
+        }
+        if(action=="favorite"){
+            string p=ValidProvider(a),m=Data.String(a,"model");if(!Regex.IsMatch(m,"^[\\w.:/-]{1,120}$"))throw new Exception("Wybierz model.");store.Favorite(Scope(p,DraftKey(a,p)),m);Push();return null;
+        }
+        if(action=="capture"){await StartCapture();return null;}
+        if(action=="image"){await AddImage();return null;}
+        if(action=="cancel"){Cancel(true);return null;}
+        if(action=="repeat"){Repeat();return null;}
+        if(action=="copy"){if(lastAnswer!="")Clipboard.SetText(lastAnswer);Status("Odpowiedź skopiowana.",false);return null;}
+        if(action=="clear"){Cancel(false);lastAnswer="";lastModel="";ClearTask();Status("Usunięto odpowiedź i kadr.",false);return null;}
+        if(action=="speak"){if(lastAnswer=="")throw new Exception("Brak odpowiedzi do odczytania.");if(speech==null)speech=new System.Speech.Synthesis.SpeechSynthesizer();if(speech.State==System.Speech.Synthesis.SynthesizerState.Speaking)speech.SpeakAsyncCancelAll();else speech.SpeakAsync(lastAnswer);return null;}
+        if(action=="explain"||action=="compare"){
+            RequireFrame();if(busy)throw new Exception("Analiza już trwa.");var spec=new Dictionary<string,object>(lastSpec);
+            if(action=="explain"){spec["mode"]="tutor";spec["answerOnly"]=false;}else{string m=Data.String(a,"model");if(!Regex.IsMatch(m,"^[\\w.:/-]{1,120}$")||m==Data.String(spec,"model"))throw new Exception("Wybierz inny model.");spec["model"]=m;}
+            await Infer(spec,lastImage,action=="compare",false);return null;
+        }
+        if(action=="history"){
+            var row=store.History.FirstOrDefault(x=>Data.String(x,"id")==Data.String(a,"id"));if(row==null)throw new Exception("Nie znaleziono odpowiedzi.");
+            string operation=Data.String(a,"operation","open");if(operation=="delete")store.History.Remove(row);
+            else if(operation=="pin"){if(!Data.Bool(row,"pinned")&&store.History.Count(x=>Data.Bool(x,"pinned"))>=20)throw new Exception("Możesz przypiąć 20 odpowiedzi.");row["pinned"]=!Data.Bool(row,"pinned");}
+            else if(operation=="open"){Cancel(false);ClearTask();lastAnswer=Data.String(row,"text");lastModel=Data.String(row,"model");}
+            else throw new Exception("Nieznana operacja historii.");Save();Push();return null;
+        }
+        if(action=="usage"){Process.Start(new ProcessStartInfo("https://chatgpt.com/settings/usage"){UseShellExecute=true});return null;}
+        if(action=="exit"){exiting=true;Close();return null;}
+        throw new Exception("Nieobsługiwana operacja.");
     }
-    private bool Save(){try{store.Save();return true;}catch(Exception e){Status("Nie zapisano ustawień: "+e.Message,true);return false;}}
-    private async void RefreshAccount(){
-        try{accountStatus=await bridge.Call("status",null);ApplyAccount();if(Provider=="chatgpt")LoadModels(false);}catch(Exception e){Status(e.Message,true);}
-    }
-    private void ApplyAccount(){
-        building=true;accounts.Items.Clear();var rows=Data.Rows(accountStatus,"accounts");activeAccount=Data.String(accountStatus,"activeId");
-        foreach(var row in rows)accounts.Items.Add(Data.String(row,"label"));accounts.SelectedIndex=rows.FindIndex(x=>Data.String(x,"id")==activeAccount);building=false;
-        if(Provider=="chatgpt")connectionLabel.Text=Data.Bool(accountStatus,"connected")?Data.String(accountStatus,"email")+" · "+(Data.Bool(accountStatus,"sharing")?"Korzystasz z planu ChatGPT":"Brak zgody na korzystanie z planu"):"Konto nie jest połączone.";
-        RefreshCatalog();
-    }
-    private async void SignIn(bool additional){
-        if(preview||busy)return;Cancel();ClearTask();Status("Dokończ logowanie w przeglądarce…",false);busy=true;
-        try{accountStatus=await bridge.Call("signin",new Dictionary<string,object>{{"accountId",additional?"__new":activeAccount}});ApplyAccount();Status("Konto połączone. Pobierz modele i zapisz wybór.",false);LoadModels(true);}
-        catch(Exception e){Status(e.Message,true);}finally{busy=false;}
-    }
-    private async void SelectAccount(){
-        if(busy||preview)return;var rows=Data.Rows(accountStatus,"accounts");int i=accounts.SelectedIndex;if(i<0||i>=rows.Count)return;
-        Cancel();ClearTask();try{accountStatus=await bridge.Call("select",new Dictionary<string,object>{{"accountId",Data.String(rows[i],"id")}});ApplyAccount();LoadModels(false);}catch(Exception e){Status(e.Message,true);}
-    }
-    private async void SignOut(){if(preview||busy)return;Cancel();ClearTask();try{accountStatus=await bridge.Call("signout",null);ApplyAccount();}catch(Exception e){Status(e.Message,true);}}
-    private async void LoadModels(bool force){
-        if(preview||loadingModels||Provider=="chatgpt"&&!Data.Bool(accountStatus,"connected"))return;
-        if(Provider!="chatgpt"&&CatalogKey==""){if(force)Status("Wklej klucz, aby pobrać modele. Zapisz połączenie po wyborze modelu.",true);return;}
-        string scope=Scope,p=Provider,account=activeAccount,catalogKey=CatalogKey;if(!force&&Data.Now-Data.Number(store.Settings,scope+".at",0)<21600000)return;
-        loadingModels=true;Status("Pobieram aktualny katalog…",false);
+    private async Task LoadModels(string p,string key,bool force){
+        if(preview)return;
+        string scope=Scope(p,key),id=AccountId;int epoch=connectionGeneration;
+        if(p=="chatgpt"&&(!Data.Bool(account,"connected")||!Data.Bool(account,"sharing")||id=="")){if(force)throw new Exception("Zaloguj się, aby pobrać modele konta.");return;}
+        if(p!="chatgpt"&&key==""){if(force)throw new Exception("Wklej klucz API, aby pobrać listę modeli.");return;}
+        if(modelRequests.Contains(scope))return;
+        if(!force&&store.Catalog(scope).Count>0&&Data.Now-Data.Number(store.Settings,scope+".at",0)<21600000){Push();return;}
+        modelRequests.Add(scope);catalogError="";Status("Pobieram aktualny katalog modeli…",false);
         try{
-            var result=await bridge.Call("models",new Dictionary<string,object>{{"provider",p},{"key",catalogKey},{"accountId",account}});
-            store.Catalog(scope,Data.Rows(result,"models"));if(scope!=Scope)return;RefreshCatalog();Status("Pobrano "+catalogRows.Count+" modeli. Nowe pozycje mają oznaczenie Nowy przez 24 godziny.",false);
-        }catch(Exception e){Status(e.Message,true);}finally{loadingModels=false;}
-    }
-    private void RefreshCatalog(){
-        string scope=Scope,selected=model.Text;catalogRows=store.Catalog(scope);models.Items.Clear();
-        foreach(var row in catalogRows)models.Items.Add(store.ModelLabel(scope,row));models.SelectedIndex=catalogRows.FindIndex(x=>Data.String(x,"id")==selected);model.Text=selected;
-        favorites.Controls.Clear();foreach(var row in catalogRows.Where(x=>store.Favorites(scope).Contains(Data.String(x,"id"))).Take(2)){
-            string id=Data.String(row,"id");favorites.Controls.Add(Theme.Button(store.ModelLabel(scope,row),()=>{model.Text=id;SaveConnection();},false));
-        }
-    }
-    private void Favorite(){try{if(!Regex.IsMatch(model.Text,"^[\\w.:/-]{1,120}$"))throw new Exception("Najpierw wybierz model.");store.Favorite(Scope,model.Text);RefreshCatalog();}catch(Exception e){Status(e.Message,true);}}
-    private void SaveAppearance(){
-        store.Settings["answerOnly"]=answerOnly.Checked;store.Settings["quality"]=quality.Checked;store.Settings["persistentHistory"]=persistent.Checked;
-        store.Settings["style"]=style.SelectedIndex==0?"card":"text";store.Settings["position"]=position.SelectedIndex==1?"top":"bottom";
-        store.Settings["indicator"]=indicator.SelectedIndex;store.Settings["opacity"]=(int)opacity.Value;store.Settings["textSize"]=(int)fontSize.Value;store.Settings["duration"]=(int)duration.Value;
-        if(Save())Status("Wygląd zapisany.",false);
-    }
-    private void Profile(string id){
-        answerOnly.Checked=id!="study";store.Settings["voice"]=id=="voice";style.SelectedIndex=id=="discreet"?1:0;
-        opacity.Value=id=="discreet"?18:80;fontSize.Value=id=="discreet"?14:18;duration.Value=id=="study"?30:id=="discreet"?6:12;
-        indicator.SelectedIndex=id=="discreet"?2:id=="study"?0:1;SaveAppearance();Status("Profil został zmieniony.",false);
+            var result=await bridge.Call("models",new Dictionary<string,object>{{"provider",p},{"key",key},{"accountId",id}});
+            if(epoch!=connectionGeneration||p=="chatgpt"&&id!=AccountId)return;
+            var rows=Data.Rows(result,"models");if(rows.Count==0)throw new Exception("Usługa zwróciła pustą listę modeli.");
+            store.Catalog(scope,rows);
+            if(Selected(p,key)==""){store.Settings[scope+".selected"]=Data.String(rows[0],"id");Save();}
+            Status("Pobrano "+rows.Count+" modeli. Wybierz model i zapisz połączenie.",false);
+        }catch(Exception e){if(epoch!=connectionGeneration)return;catalogError=e.Message;Status("Nie pobrano modeli. "+e.Message,true);throw;}
+        finally{modelRequests.Remove(scope);Push();}
     }
     private Dictionary<string,object> Snapshot(){
-        return new Dictionary<string,object>{{"provider",Provider},{"model",model.Text.Trim()},{"key",SavedKey},{"accountId",activeAccount},
-            {"mode",answerOnly.Checked?"express":"tutor"},{"answerOnly",answerOnly.Checked},{"internet",false}};
+        string p=Provider,m=Selected(p,Key(p));if(!Regex.IsMatch(m,"^[\\w.:/-]{1,120}$"))throw new Exception("Wybierz i zapisz model w Połączeniach.");
+        if(p=="chatgpt"&&(!Data.Bool(account,"connected")||!Data.Bool(account,"sharing")||AccountId==""))throw new Exception("Połącz konto ChatGPT w Połączeniach.");
+        if(p!="chatgpt"&&Key(p)=="")throw new Exception("Zapisz klucz API w Połączeniach.");
+        bool only=Data.Bool(store.Settings,"answerOnly");return new Dictionary<string,object>{{"provider",p},{"model",m},{"key",Key(p)},{"accountId",AccountId},{"mode",only?"express":"tutor"},{"answerOnly",only},{"internet",false}};
     }
-    private async void StartCapture(){
-        if(preview||busy||capturing||cropping!=null)return;if(!SaveConnection())return;
-        capturing=true;int captureEpoch=generation;
-        var spec=Snapshot();string captured=null;bool visible=Visible;Hide();CloseOverlay();await Task.Delay(200);
-        try {
-            if(captureEpoch!=generation)return;
+    private async Task StartCapture(){
+        if(preview||busy||capturing)return;var spec=Snapshot();capturing=true;int epoch=++generation;bool wasVisible=Visible,sent=false;
+        try{
+            Hide();CloseOverlay();if(floating!=null)floating.Hide();await Task.Delay(230);if(epoch!=generation)return;
             Rectangle desktop=SystemInformation.VirtualScreen;
-            if(desktop.Width<=0||desktop.Height<=0||(long)desktop.Width*desktop.Height>60000000)throw new Exception("Układ ekranów jest zbyt duży do przechwycenia. Zmniejsz rozdzielczość lub liczbę aktywnych monitorów.");
+            if(desktop.Width<=0||desktop.Height<=0||(long)desktop.Width*desktop.Height>60000000)throw new Exception("Układ ekranów jest zbyt duży do przechwycenia.");
+            string image;
             using(var frame=new Bitmap(desktop.Width,desktop.Height,PixelFormat.Format32bppArgb)){
                 using(var g=Graphics.FromImage(frame))g.CopyFromScreen(desktop.Location,Point.Empty,desktop.Size,CopyPixelOperation.SourceCopy);
-                using(cropping=new CropForm(frame,desktop,quality.Checked)){
-                    if(cropping.ShowDialog()!=DialogResult.OK){if(visible)Open();return;}
-                    captured=cropping.ImageData;
-                }cropping=null;
+                using(crop=new CropForm(frame,desktop,Data.Bool(store.Settings,"quality"))){if(crop.ShowDialog()!=DialogResult.OK){if(wasVisible)Open();return;}image=crop.ImageData;}crop=null;
             }
-            await Infer(spec,captured,false,null);
-        }catch(Exception e){Status(e.Message,true);Open();}finally{cropping=null;capturing=false;}
+            if(epoch!=generation)return;capturing=false;sent=true;await Infer(spec,image,false,true);
+        }catch(Exception e){if(!sent){Status(e.Message,true);Open();}}
+        finally{crop=null;capturing=false;ApplyFloating();Push();}
     }
-    private async Task Infer(Dictionary<string,object> spec,string image,bool verify,string original){
-        if(busy)return;busy=true;int epoch=++generation;string originalModel=lastModel;var args=new Dictionary<string,object>(spec);args["image"]=image;
-        int activity=indicator.SelectedIndex;string id=null;
-        if(!verify&&activity<2){ShowOverlay(activity==1?"•••":"Analizuję zadanie…",true);}
-        Status(verify?"Sprawdzam niezależnie drugim modelem…":"Analizuję zadanie…",false);
-        try {
-            var call=bridge.Call("infer",new Dictionary<string,object>{{"args",args}});id=bridge.LastId;
-            var result=await call;if(epoch!=generation)return;CloseOverlay();string text=Data.String(result,"text");
-            if(verify){using(var pair=new Form()){
-                Theme.Style(pair,"Dwie niezależne odpowiedzi",740,570);var output=new RichTextBox{Dock=DockStyle.Fill,ReadOnly=true,BackColor=Theme.Card,ForeColor=Theme.Text,BorderStyle=BorderStyle.None,Font=new Font("Segoe UI",14),Text=originalModel+"\n"+original+"\n\n"+Data.String(spec,"model")+"\n"+text};pair.Controls.Add(output);
-                var note=Theme.Label("Zgodność nie gwarantuje poprawności. Oceń obie odpowiedzi.",10,false);note.Dock=DockStyle.Bottom;pair.Controls.Add(note);Native.Exclude(pair);pair.ShowDialog(this);
-            }}else{
-                lastAnswer=text;lastModel=Data.String(spec,"model");answer.Text=text;
-                lastImage=image;imageAt=Data.Now;lastSpec=new Dictionary<string,object>(spec);
-                if(!Data.Bool(store.Settings,"voice"))ShowOverlay(text,false);
-                else SpeakSystem(text);
-                try{store.Add(text,lastModel);}catch(Exception e){Status("Odpowiedź gotowa, lecz historia nie została zapisana: "+e.Message,true);return;}
+    private async Task AddImage(){
+        if(busy||capturing)return;var spec=Snapshot();
+        using(var picker=new OpenFileDialog{Filter="Obrazy|*.png;*.jpg;*.jpeg;*.bmp",Title="Wybierz zadanie",CheckFileExists=true}){
+            if(picker.ShowDialog(this)!=DialogResult.OK)return;
+            if(new FileInfo(picker.FileName).Length>20000000)throw new Exception("Obraz jest zbyt duży. Wybierz plik do 20 MB.");
+            using(var source=Image.FromFile(picker.FileName)){
+                if((long)source.Width*source.Height>60000000)throw new Exception("Obraz ma zbyt dużą rozdzielczość.");
+                using(var frame=new Bitmap(source))using(crop=new CropForm(frame,Screen.FromControl(this).Bounds,Data.Bool(store.Settings,"quality"))){if(crop.ShowDialog(this)!=DialogResult.OK)return;string data=crop.ImageData;crop=null;await Infer(spec,data,false,false);}
             }
-            Status("Odpowiedź gotowa. Kadr dostępny przez 5 minut.",false);
-        }catch(Exception e){if(epoch==generation){CloseOverlay();Status(e.Message,true);ShowOverlay("!",true);if(tray!=null){tray.BalloonTipTitle="OKStudy";tray.BalloonTipText=e.Message;tray.ShowBalloonTip(3000);}}}
-        finally{if(epoch==generation)busy=false;}
-    }
-    private void Explain(){if(lastImage==null||Data.Now-imageAt>300000||lastSpec==null){Status("Kadr wygasł. Zaznacz zadanie ponownie.",true);return;}if(busy)return;
-        var spec=new Dictionary<string,object>(lastSpec);spec["mode"]="tutor";spec["answerOnly"]=false;Open();Infer(spec,lastImage,false,null).ContinueWith(t=>{},TaskScheduler.Default);}
-    private void Verify(){
-        if(busy)return;if(lastImage==null||lastSpec==null||lastAnswer==""||Data.Now-imageAt>300000){Status("Kadr wygasł. Zaznacz zadanie ponownie.",true);return;}
-        using(var dialog=new Form()){
-            Theme.Style(dialog,"Sprawdź innym modelem",700,285);var content=Theme.Column();content.Padding=new Padding(24);dialog.Controls.Add(content);
-            var notice=Theme.Label("Drugi model otrzyma ten sam kadr bez pierwszej odpowiedzi.\nTo dodatkowe użycie planu lub płatnego API.",12,false);content.Controls.Add(notice);
-            var choice=new ComboBox{Width=600,DropDownStyle=ComboBoxStyle.DropDown};
-            string taskScope=store.Scope(Data.String(lastSpec,"provider"),Data.String(lastSpec,"accountId"),Data.String(lastSpec,"key"));
-            foreach(var row in store.Catalog(taskScope)){string id=Data.String(row,"id");if(id!=Data.String(lastSpec,"model"))choice.Items.Add(id);}if(choice.Items.Count>0)choice.SelectedIndex=0;
-            content.Controls.Add(choice);var actions=Theme.Row();actions.Controls.Add(Theme.Button("Sprawdź",()=>{
-                string id=choice.Text.Trim();if(!Regex.IsMatch(id,"^[\\w.:/-]{1,120}$")||id==Data.String(lastSpec,"model")){MessageBox.Show("Wybierz inny, prawidłowy model.","OKStudy");return;}
-                dialog.DialogResult=DialogResult.OK;dialog.Close();},true));actions.Controls.Add(Theme.Button("Anuluj",()=>dialog.Close(),false));content.Controls.Add(actions);
-            if(dialog.ShowDialog(this)==DialogResult.OK){var spec=new Dictionary<string,object>(lastSpec);spec["model"]=choice.Text.Trim();Infer(spec,lastImage,true,lastAnswer).ContinueWith(t=>{},TaskScheduler.Default);}
         }
     }
-    private void SpeakSystem(string text){try{if(speech==null)speech=new System.Speech.Synthesis.SpeechSynthesizer();speech.SpeakAsyncCancelAll();speech.SpeakAsync(text);}catch(Exception e){Status(e.Message,true);}}
+    private async Task Infer(Dictionary<string,object> spec,string image,bool compare,bool showAnswer){
+        if(busy)return;busy=true;int epoch=++generation;string original=lastAnswer,originalModel=lastModel;
+        var args=new Dictionary<string,object>(spec);args["image"]=image;
+        if(!compare&&showAnswer&&Data.Number(store.Settings,"indicator",1)<2)ShowActivity();
+        Status(compare?"Sprawdzam niezależnie drugim modelem…":"Analizuję zadanie…",false);
+        try{
+            var result=await bridge.Call("infer",new Dictionary<string,object>{{"args",args}});if(epoch!=generation)return;
+            string text=Data.String(result,"text");if(text.Trim()=="")throw new Exception("Model nie zwrócił odpowiedzi.");CloseOverlay();
+            if(compare){secondAnswer=text;secondModel=Data.String(spec,"model");lastAnswer=original;lastModel=originalModel;}
+            else{
+                lastAnswer=text;lastModel=Data.String(spec,"model");lastImage=image;imageAt=Data.Now;lastSpec=new Dictionary<string,object>(spec);secondAnswer="";secondModel="";
+                if(showAnswer){if(Data.Bool(store.Settings,"voice")){if(speech==null)speech=new System.Speech.Synthesis.SpeechSynthesizer();speech.SpeakAsync(text);}else ShowOverlay(text,false);}
+                try{store.Add(text,lastModel);}catch(Exception e){Status("Odpowiedź gotowa. Nie zapisano historii: "+e.Message,true);return;}
+            }
+            Status("Odpowiedź gotowa. Kadr jest dostępny przez 5 minut.",false);
+        }catch(Exception e){if(epoch!=generation)return;CloseOverlay();Status(e.Message,true);if(showAnswer)ShowOverlay("!",true);throw;}
+        finally{if(epoch==generation){busy=false;Push();}}
+    }
+    private void RequireFrame(){if(lastImage==null||lastSpec==null||Data.Now-imageAt>300000){ClearTask(false);throw new Exception("Kadr wygasł. Zaznacz zadanie ponownie.");}}
+    private void ClearTask(bool clearComparison=true){lastImage=null;lastSpec=null;imageAt=0;if(clearComparison){secondAnswer="";secondModel="";}}
     private void Repeat(){if(lastAnswer==""){Status("Brak ostatniej odpowiedzi.",false);return;}ShowOverlay(lastAnswer,false);Status("Powtórzono bez nowego zapytania.",false);}
-    private void ShowOverlay(string text,bool transient){CloseOverlay();var settings=new DictionarySettings(store.Settings);if(transient){settings.Duration=text=="!"?2:30;settings.Opacity=1;settings.Card=text.Length>3;}
-        overlay=new AnswerOverlay(text,settings);overlay.Show();}
+    private void ShowOverlay(string text,bool brief){CloseOverlay();var s=new DictionarySettings(store.Settings);if(brief){s.Duration=2;s.Opacity=1;s.Card=true;}overlay=new AnswerOverlay(text,s);overlay.Show();}
+    private void ShowActivity(){CloseOverlay();overlay=new AnswerOverlay(Data.Number(store.Settings,"indicator",1)==1?"•••":"Analizuję zadanie…",new DictionarySettings(store.Settings),()=>Cancel(true));overlay.Show();}
     private void CloseOverlay(){if(overlay!=null){overlay.Close();overlay.Dispose();overlay=null;}}
-    private void Cancel(){generation++;if(!preview)bridge.CancelAll();if(speech!=null)speech.SpeakAsyncCancelAll();busy=false;CloseOverlay();Status("Przerwano. Ctrl + Alt + O rozpoczyna nowe zaznaczenie.",false);}
-    private void ClearTask(){lastImage=null;lastSpec=null;imageAt=0;}
+    private void Cancel(bool notify){generation++;bridge.CancelAll();if(crop!=null)crop.Close();if(speech!=null)speech.SpeakAsyncCancelAll();busy=false;CloseOverlay();if(notify)Status("Przerwano.",false);}
     private void Open(){Show();WindowState=FormWindowState.Normal;Activate();}
-    private void RenderHistory(){
-        historyRows.SuspendLayout();foreach(Control c in historyRows.Controls.Cast<Control>().ToArray())c.Dispose();historyRows.Controls.Clear();
-        string search=historySearch.Text.Trim();
-        foreach(var row in store.History.Where(x=>(Data.String(x,"text")+" "+Data.String(x,"model")).IndexOf(search,StringComparison.CurrentCultureIgnoreCase)>=0).OrderByDescending(x=>Data.Bool(x,"pinned"))){
-            var entry=row;string text=Data.String(row,"text");var line=Theme.Row();line.Controls.Add(Theme.Button((Data.Bool(row,"pinned")?"★ ":"")+text.Substring(0,Math.Min(44,text.Length)),()=>{Cancel();lastAnswer=text;lastModel=Data.String(entry,"model");answer.Text=text;ClearTask();ShowPage(0);Repeat();},false));
-            line.Controls[0].Width=410;line.Controls.Add(Theme.Button(Data.Bool(row,"pinned")?"Odepnij":"Przypnij",()=>{
-                if(!Data.Bool(entry,"pinned")&&store.History.Count(x=>Data.Bool(x,"pinned"))>=20){Status("Możesz przypiąć 20 odpowiedzi.",true);return;}
-                entry["pinned"]=!Data.Bool(entry,"pinned");Save();RenderHistory();},false));line.Controls.Add(Theme.Button("Usuń",()=>{store.History.Remove(entry);Save();RenderHistory();},false));historyRows.Controls.Add(line);
-        }historyRows.ResumeLayout();
+    private void ApplyFloating(){if(preview||disposed)return;if(Data.Bool(store.Settings,"floating")){if(floating==null){floating=new FloatingButton(()=>RunCapture(),()=>Repeat(),()=>Open());}if(!capturing)floating.Show();}else if(floating!=null){floating.Close();floating.Dispose();floating=null;}}
+    private async void RunCapture(){try{await StartCapture();}catch(Exception e){Status(e.Message,true);Open();}}
+    private void CreateTray(){
+        if(tray!=null)return;tray=new NotifyIcon{Icon=Icon,Text="OKStudy · Ctrl+Alt+O",Visible=true};var menu=new ContextMenuStrip();menu.Items.Add("Zaznacz zadanie",null,(s,e)=>RunCapture());menu.Items.Add("Powtórz odpowiedź",null,(s,e)=>Repeat());menu.Items.Add("Otwórz OKStudy",null,(s,e)=>Open());menu.Items.Add("Zakończ",null,(s,e)=>{exiting=true;Close();});tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,e)=>Open();
+        bool ok=Native.RegisterHotKey(Handle,1,0x4003,(uint)Keys.O);ok&=Native.RegisterHotKey(Handle,2,0x4003,(uint)Keys.R);ok&=Native.RegisterHotKey(Handle,3,0x4003,(uint)Keys.K);if(!ok)Status("Jeden ze skrótów jest zajęty. Użyj przycisku OK lub ikony przy zegarze.",true);
     }
-    protected override void OnShown(EventArgs e){base.OnShown(e);Native.Exclude(this);if(preview||tray!=null)return;
-        tray=new NotifyIcon{Icon=Icon,Text="OKStudy · Ctrl+Alt+O",Visible=true};var menu=new ContextMenuStrip();
-        menu.Items.Add("Zaznacz zadanie",null,(s,a)=>StartCapture());menu.Items.Add("Powtórz odpowiedź",null,(s,a)=>Repeat());menu.Items.Add("Otwórz OKStudy",null,(s,a)=>Open());menu.Items.Add("Zakończ",null,(s,a)=>{exiting=true;Close();});tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,a)=>Open();
-        bool hotkeys=true;hotkeys&=Native.RegisterHotKey(Handle,1,0x4003,(uint)Keys.O);hotkeys&=Native.RegisterHotKey(Handle,2,0x4003,(uint)Keys.R);hotkeys&=Native.RegisterHotKey(Handle,3,0x4003,(uint)Keys.K);
-        if(!hotkeys)Status("Jeden ze skrótów jest zajęty przez inny program. Możesz użyć ikony OKStudy przy zegarze.",true);
-        RefreshAccount();
-    }
-    protected override void WndProc(ref Message m){if(m.Msg==0x0312){int id=m.WParam.ToInt32();if(id==1)StartCapture();if(id==2)Repeat();if(id==3){if(cropping!=null)cropping.Close();Cancel();}}base.WndProc(ref m);}
-    protected override void Dispose(bool disposing){if(disposing&&!managedDisposed){managedDisposed=true;expiry.Dispose();if(IsHandleCreated)for(int i=1;i<=3;i++)Native.UnregisterHotKey(Handle,i);CloseOverlay();if(tray!=null){tray.Visible=false;tray.Dispose();}if(speech!=null)speech.Dispose();bridge.Dispose();ClearTask();}base.Dispose(disposing);}
-}
-
-internal static class SelfCheck {
-    internal static void BridgeCheck(string root){
-        using(var bridge=new Bridge(root)){
-            var models=bridge.Call("models",new Dictionary<string,object>{{"provider","openai"},{"key","mock-key"}}).GetAwaiter().GetResult();
-            if(Data.String(Data.Rows(models,"models").First(),"id")!="mock-model")throw new Exception("GUI bridge catalog failed");
-            var task=new Dictionary<string,object>{{"provider","openai"},{"key","mock-key"},{"model","mock-model"},{"mode","express"},{"answerOnly",true},{"image","data:image/png;base64,YQ=="}};
-            var result=bridge.Call("infer",new Dictionary<string,object>{{"args",task}}).GetAwaiter().GetResult();
-            if(Data.String(result,"text")!="Zażółć gęślą jaźń")throw new Exception("GUI bridge UTF-8 inference failed");
-        }
-    }
-    internal static void Run(){
-        using(var image=new Bitmap(160,60)){using(var g=Graphics.FromImage(image))g.Clear(Color.White);if(ImageQuality.Inspect(image)==null)throw new Exception("Empty image check failed");
-            string data=ImageQuality.Encode(image);if(!data.StartsWith("data:image/png;base64,"))throw new Exception("PNG encoding failed");}
-        string path=Path.Combine(Path.GetTempPath(),"OKStudy-selfcheck-"+Guid.NewGuid().ToString("N"),"settings.dat");
-        try {var store=new Store(path);store.Settings["test"]="Zażółć gęślą jaźń";store.Save();var restored=new Store(path);restored.Load();if(Data.String(restored.Settings,"test")!="Zażółć gęślą jaźń")throw new Exception("Encrypted storage failed");
-            restored.Catalog("a",new List<Dictionary<string,object>>{new Dictionary<string,object>{{"id","old"},{"name","Old"}}});restored.Catalog("a",new List<Dictionary<string,object>>{new Dictionary<string,object>{{"id","old"},{"name","Old"}},new Dictionary<string,object>{{"id","new"},{"name","New"}}});
-            if(!restored.ModelLabel("a",restored.Catalog("a").First(x=>Data.String(x,"id")=="new")).Contains("Nowy"))throw new Exception("New model marker failed");
-        }finally{if(File.Exists(path))File.Delete(path);if(Directory.Exists(Path.GetDirectoryName(path)))Directory.Delete(Path.GetDirectoryName(path));}
-    }
+    protected override void WndProc(ref Message m){if(m.Msg==0x0312){int id=m.WParam.ToInt32();if(id==1)RunCapture();if(id==2)Repeat();if(id==3)Cancel(true);}if(m.Msg==Native.OpenMessage)Open();if(m.Msg==Native.ExitMessage){exiting=true;Close();}base.WndProc(ref m);}
+    protected override void Dispose(bool disposing){if(disposing&&!managedDisposed){managedDisposed=true;expiry.Dispose();if(IsHandleCreated)for(int i=1;i<=3;i++)Native.UnregisterHotKey(Handle,i);CloseOverlay();if(floating!=null)floating.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(speech!=null)speech.Dispose();bridge.Dispose();ClearTask();}base.Dispose(disposing);}
 }

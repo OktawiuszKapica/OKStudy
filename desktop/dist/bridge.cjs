@@ -2815,7 +2815,7 @@ function validateTask(a) {
     messages: [{ role: "user", text: "Przeanalizuj zadanie w wybranym fragmencie ekranu." }]
   };
 }
-function startBridge() {
+function startBridge(auth = { session, signIn, signOut, selectAccount, models, accessToken }) {
   const controllers = /* @__PURE__ */ new Map();
   const send = (m2) => {
     const data = JSON.stringify(m2);
@@ -2832,30 +2832,32 @@ function startBridge() {
     if (controllers.size >= 8 || controllers.has(m2.id)) return;
     const c = new AbortController();
     controllers.set(m2.id, c);
-    const timeout = setTimeout(() => c.abort(), m2.action === "signin" ? 18e4 : 12e4);
+    const timeout = setTimeout(() => c.abort(), m2.action === "signin" ? 18e4 : m2.action === "models" ? 2e4 : 12e4);
     try {
       let result;
-      if (m2.action === "status") result = await session();
-      else if (m2.action === "signin")
-        result = await signIn((url) => send({ id: m2.id, event: "authorize", url }), c.signal, m2.accountId);
-      else if (m2.action === "select") result = await selectAccount(m2.accountId);
-      else if (m2.action === "signout") result = await signOut();
+      if (m2.action === "status") result = await auth.session();
+      else if (m2.action === "signin") {
+        await auth.signIn((url) => send({ id: m2.id, event: "authorize", url }), c.signal, m2.accountId);
+        result = await auth.session();
+      } else if (m2.action === "select") result = await auth.selectAccount(m2.accountId);
+      else if (m2.action === "signout") result = await auth.signOut();
       else if (m2.action === "models") {
         if (m2.provider === "chatgpt") {
-          const current2 = await session();
+          const current2 = await auth.session();
           if (m2.accountId !== current2.activeId)
             throw new Error("Konto zosta\u0142o zmienione. Od\u015Bwie\u017C po\u0142\u0105czenie.");
-          result = await models(c.signal);
+          result = await auth.models(c.signal);
         } else result = await fetchModels(m2.provider, m2.key, c.signal);
         result = result.filter((x2) => /^[\w.:/-]{1,120}$/.test(x2.id)).slice(0, 2e3);
-        result = { models: result };
+        if (!result.length) throw new Error("Us\u0142uga zwr\xF3ci\u0142a pusty katalog modeli. Od\u015Bwie\u017C list\u0119 lub wpisz identyfikator modelu.");
+        result = { models: result, source: "live", updatedAt: Date.now() };
       } else if (m2.action === "infer") {
         const args = validateTask(m2.args);
         if (m2.args.provider === "chatgpt") {
-          const current2 = await session();
+          const current2 = await auth.session();
           if (!current2.connected || !current2.sharing || current2.activeId !== m2.args.accountId)
             throw new Error("Konto zosta\u0142o zmienione lub nie udost\u0119pnia planu. Po\u0142\u0105cz je ponownie.");
-          const token = await accessToken(c.signal);
+          const token = await auth.accessToken(c.signal);
           result = await readResponses(
             await fetch("https://api.openai.com/v1/responses", {
               method: "POST",

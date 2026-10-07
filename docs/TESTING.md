@@ -1,5 +1,13 @@
 # Weryfikacja OKStudy 2
 
+## Windows 0.2.0 Studio — 7 października 2026
+
+Przeszło **48 testów Node bez pominięć**, w tym regresja logowanie → pełny identyfikator aktywnego konta → natychmiastowy katalog. **13 kontroli frontendu Studio** obejmuje konto i modele, klucz API przed zapisem, ręczny wybór, Dodaj obraz, suwaki, motywy, historię i trzy rozmiary okna; zero błędów JavaScript. Konto i usługi są zastępowane kontrolowanymi danymi.
+
+**12 kontroli Windows** sprawdza dołączony Node, polski tekst C# ↔ Node, bezpieczny błąd, anulowanie, DPAPI, przechwycenie wyłącznie własnego okna testowego przez rzeczywisty GDI, rejestrację skrótu, przepuszczanie kliknięć przez odpowiedź oraz izolowaną instalację/aktualizację/deinstalację z zachowaniem ustawień. Pliki po instalacji zgadzają się z hashami paczki. Natywne podglądy WebView2 programu, instalatora i deinstalatora obejrzano. Katalog `artifacts/desktop` zawiera raporty i zrzuty.
+
+Znaleziony podczas sprawdzenia wyjątek zamykania instalatora/deinstalatora naprawiono: brak dostępu do załadowanej biblioteki tymczasowej nie przerywa już zakończenia procesu. Wcześniejsze równoległe kontrole przekraczały limity czasu; końcowy przebieg ma odpowiedni limit dla rozpakowania paczki i kończy się poprawnie. Nie wykonano żywego logowania ChatGPT ani płatnych zapytań; dostęp konkretnego konta i wielomonitorowe konfiguracje wymagają [próby użytkownika](WINDOWS-TESTS.md). Android/iOS nie były zmieniane ani uruchamiane.
+
 ## Wydanie 2.2.0 / Windows 0.1.0 — 7 października 2026
 
 **47 testów Node przeszło bez pominięć.** Obejmują również ulubione modele, wygasanie oznaczenia Nowy, rozdzielenie katalogów według połączenia, lokalną kontrolę czytelności oraz odbiór tekstu z końcowych zdarzeń strumienia bez duplikacji i ujawniania reasoning. Wymagane pozostaje potwierdzenie ukończenia; późniejszy błąd odrzuca wynik.

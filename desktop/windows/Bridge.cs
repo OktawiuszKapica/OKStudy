@@ -23,10 +23,11 @@ internal sealed class Bridge : IDisposable {
         },EnableRaisingEvents=true};
         process.OutputDataReceived+=Receive;
         process.ErrorDataReceived+=(s,e)=>{}; // Drain stderr; credentials/payloads are never logged.
-        process.Exited+=(s,e)=>FailAll("Moduł połączenia zakończył pracę. Spróbuj ponownie.");
+        process.Exited+=(s,e)=>{lock(gate){if(s==process)FailAll("Moduł połączenia zakończył pracę. Spróbuj ponownie.");}};
         process.Start(); process.StandardInput.AutoFlush=true; process.BeginOutputReadLine();process.BeginErrorReadLine();
     }
     private void Receive(object sender,DataReceivedEventArgs args) {
+        if(sender!=process)return;
         if(args.Data==null)return;
         try {
             if(args.Data.Length>900000)throw new Exception("Odpowiedź modułu jest za długa.");
@@ -47,9 +48,9 @@ internal sealed class Bridge : IDisposable {
         string id=Guid.NewGuid().ToString("N");var task=new TaskCompletionSource<Dictionary<string,object>>();
         lock(gate){Start();pending.Add(id,task);LastId=id;m["id"]=id;m["action"]=action;}
         try {
-            await Task.Run(()=> { var line=Data.Json.Serialize(m);if(Encoding.UTF8.GetByteCount(line)>31000000)throw new Exception("Zaznaczenie jest zbyt duże.");lock(gate)process.StandardInput.WriteLine(line); });
-            if(await Task.WhenAny(task.Task,Task.Delay(action=="signin"?195000:135000))!=task.Task) {Cancel(id);throw new Exception("Przekroczono czas oczekiwania.");}
-            var result=await task.Task;
+            await Task.Run(()=> { var line=Data.Json.Serialize(m);if(Encoding.UTF8.GetByteCount(line)>31000000)throw new Exception("Zaznaczenie jest zbyt duże.");lock(gate)process.StandardInput.WriteLine(line); }).ConfigureAwait(false);
+            if(await Task.WhenAny(task.Task,Task.Delay(action=="signin"?195000:135000)).ConfigureAwait(false)!=task.Task) {Cancel(id);throw new Exception("Przekroczono czas oczekiwania.");}
+            var result=await task.Task.ConfigureAwait(false);
             // Model arrays are wrapped by the bridge, all GUI results remain objects.
             return result;
         }catch{Cancel(id);throw;}finally{lock(gate)pending.Remove(id);}
@@ -57,6 +58,8 @@ internal sealed class Bridge : IDisposable {
     internal void Cancel(string id) {
         lock(gate) {
             if(process==null||process.HasExited||string.IsNullOrEmpty(id))return;
+            TaskCompletionSource<Dictionary<string,object>> task;
+            if(pending.TryGetValue(id,out task)){pending.Remove(id);task.TrySetException(new Exception("Operacja została przerwana."));}
             try {process.StandardInput.WriteLine(Data.Json.Serialize(new {id=Guid.NewGuid().ToString("N"),action="cancel",targetId=id}));}catch(IOException){}
         }
     }

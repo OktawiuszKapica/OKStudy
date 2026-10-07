@@ -4,9 +4,18 @@ using System.Drawing;
 using System.Windows.Forms;
 
 internal static class Native {
+    internal static readonly int OpenMessage=unchecked((int)RegisterWindowMessage("OKStudy.Desktop.Open"));
+    internal static readonly int ExitMessage=unchecked((int)RegisterWindowMessage("OKStudy.Desktop.Exit"));
+    [DllImport("user32.dll",CharSet=CharSet.Unicode)] private static extern uint RegisterWindowMessage(string text);
+    [DllImport("user32.dll",CharSet=CharSet.Unicode)] private static extern IntPtr FindWindow(string cls,string title);
+    internal static void ActivateExisting(){var h=FindWindow(null,"OKStudy · Windows");if(h!=IntPtr.Zero)PostMessage(h,OpenMessage,IntPtr.Zero,IntPtr.Zero);}
     [DllImport("user32.dll", SetLastError=true)] internal static extern bool RegisterHotKey(IntPtr window, int id, uint modifiers, uint key);
     [DllImport("user32.dll")] internal static extern bool UnregisterHotKey(IntPtr window, int id);
     [DllImport("user32.dll")] private static extern bool SetWindowDisplayAffinity(IntPtr window, uint affinity);
+    [DllImport("user32.dll")] private static extern bool ReleaseCapture();
+    [DllImport("user32.dll")] internal static extern IntPtr SendMessage(IntPtr window,int message,IntPtr wparam,IntPtr lparam);
+    [DllImport("user32.dll")] internal static extern bool PostMessage(IntPtr window,int message,IntPtr wparam,IntPtr lparam);
+    internal static void Drag(Form form){ReleaseCapture();SendMessage(form.Handle,0xA1,new IntPtr(2),IntPtr.Zero);}
     internal static void Exclude(Form form) { try { SetWindowDisplayAffinity(form.Handle, 0x11); } catch (EntryPointNotFoundException) {} }
 }
 

@@ -26,7 +26,7 @@ export function validateTask(a) {
   };
 }
 
-export function startBridge() {
+export function startBridge(auth = { session, signIn, signOut, selectAccount, models, accessToken }) {
   const controllers = new Map();
   const send = (m) => {
     const data = JSON.stringify(m);
@@ -43,30 +43,35 @@ export function startBridge() {
     if (controllers.size >= 8 || controllers.has(m.id)) return;
     const c = new AbortController();
     controllers.set(m.id, c);
-    const timeout = setTimeout(() => c.abort(), m.action === 'signin' ? 180000 : 120000);
+    const timeout = setTimeout(() => c.abort(), m.action === 'signin' ? 180000 : m.action === 'models' ? 20000 : 120000);
     try {
       let result;
-      if (m.action === 'status') result = await session();
-      else if (m.action === 'signin')
-        result = await signIn((url) => send({ id: m.id, event: 'authorize', url }), c.signal, m.accountId);
-      else if (m.action === 'select') result = await selectAccount(m.accountId);
-      else if (m.action === 'signout') result = await signOut();
+      if (m.action === 'status') result = await auth.session();
+      else if (m.action === 'signin') {
+        await auth.signIn((url) => send({ id: m.id, event: 'authorize', url }), c.signal, m.accountId);
+        // signIn returns public identity only. Windows needs the same full account
+        // envelope as status/select, including activeId, before requesting models.
+        result = await auth.session();
+      }
+      else if (m.action === 'select') result = await auth.selectAccount(m.accountId);
+      else if (m.action === 'signout') result = await auth.signOut();
       else if (m.action === 'models') {
         if (m.provider === 'chatgpt') {
-          const current = await session();
+          const current = await auth.session();
           if (m.accountId !== current.activeId)
             throw new Error('Konto zostało zmienione. Odśwież połączenie.');
-          result = await models(c.signal);
+          result = await auth.models(c.signal);
         } else result = await fetchModels(m.provider, m.key, c.signal);
         result = result.filter((x) => /^[\w.:/-]{1,120}$/.test(x.id)).slice(0, 2000);
-        result = { models: result };
+        if (!result.length) throw new Error('Usługa zwróciła pusty katalog modeli. Odśwież listę lub wpisz identyfikator modelu.');
+        result = { models: result, source: 'live', updatedAt: Date.now() };
       } else if (m.action === 'infer') {
         const args = validateTask(m.args);
         if (m.args.provider === 'chatgpt') {
-          const current = await session();
+          const current = await auth.session();
           if (!current.connected || !current.sharing || current.activeId !== m.args.accountId)
             throw new Error('Konto zostało zmienione lub nie udostępnia planu. Połącz je ponownie.');
-          const token = await accessToken(c.signal);
+          const token = await auth.accessToken(c.signal);
           result = await readResponses(
             await fetch('https://api.openai.com/v1/responses', {
               method: 'POST',

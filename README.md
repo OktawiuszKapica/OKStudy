@@ -137,7 +137,7 @@ Dokumentacja integracji ChatGPT: [logowanie](https://developers.openai.com/siwc/
 
 ## Aplikacja Windows poza przeglądarką
 
-Osobny `OKStudy-Windows-0.1.0-Setup.exe` lub ZIP portable umożliwia analizę w PDF-ie, Wordzie i innych widocznych programach. **Ctrl + Alt + O** zaznacza fragment, **Ctrl + Alt + R** powtarza wynik, **Ctrl + Alt + K** przerywa. Aplikacja ma ikonę przy zegarze, opcjonalną szyfrowaną historię, profile, ulubione modele i sprawdzenie drugim modelem. Korzysta z dotychczasowego magazynu kont ChatGPT lub własnego klucza API. [Instrukcja i ograniczenia](desktop/README.md), [scenariusze sprawdzenia](docs/WINDOWS-TESTS.md).
+Osobny `OKStudy-Windows-0.2.0-Setup.exe` lub ZIP portable umożliwia analizę w PDF-ie, Wordzie i innych widocznych programach. Zatwierdzony wygląd **Studio** obejmuje program, instalator i deinstalator. **Ctrl + Alt + O** lub pływające **OK** zaznacza fragment, **Ctrl + Alt + R** powtarza wynik, **Ctrl + Alt + K** przerywa. Aplikacja ma ikonę przy zegarze, opcjonalną szyfrowaną historię, profile, ulubione modele i sprawdzenie drugim modelem. Korzysta z dotychczasowego magazynu kont ChatGPT lub własnego klucza API. Naprawiono natychmiastowe pobieranie modeli po logowaniu. [Instrukcja i ograniczenia](desktop/README.md), [scenariusze sprawdzenia](docs/WINDOWS-TESTS.md).
 
 ## Wersja mobilna
 

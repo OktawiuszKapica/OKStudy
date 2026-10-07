@@ -1,0 +1,50 @@
+html,body{margin:0;height:100%;overflow:hidden;background:#131917}
+/* Explicit values keep Studio readable on older Evergreen engines too. */
+#ok-windows-vision .wv-stage{--wv-bg:#131917;--wv-side:#17201b;--wv-card:#1d2822;--wv-text:#eff3e9;--wv-sub:#a2b0a5;--wv-line:#334137;--wv-soft:#293b27;--wv-warn:#e7bb80}
+#ok-windows-vision[data-tone=paper] .wv-stage{--wv-bg:#f4f6f0;--wv-side:#eaf0e7;--wv-card:#fff;--wv-text:#18251d;--wv-sub:#58675c;--wv-line:#d9e2d6;--wv-soft:#e0eed7;--wv-warn:#986016}
+@media(prefers-color-scheme:light){#ok-windows-vision[data-tone=system] .wv-stage{--wv-bg:#f4f6f0;--wv-side:#eaf0e7;--wv-card:#fff;--wv-text:#18251d;--wv-sub:#58675c;--wv-line:#d9e2d6;--wv-soft:#e0eed7;--wv-warn:#986016}}
+#ok-windows-vision,#ok-windows-vision .wv-stage{height:100%;min-height:0}
+#ok-windows-vision .wv-window{height:100%;min-height:0;border-radius:16px}
+#ok-windows-vision .wv-body{min-height:0;overflow:hidden}
+#ok-windows-vision .wv-main{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--wv-line) transparent}
+#ok-windows-vision button{cursor:pointer}
+#ok-windows-vision button:disabled{opacity:.42;cursor:default}
+#ok-windows-vision :focus-visible{outline:2px solid var(--wv-accent);outline-offset:3px}
+#ok-windows-vision .wv-title-actions{gap:4px}
+#ok-windows-vision .wv-titlebar{user-select:none}
+#ok-windows-vision .window-close:hover{background:#973e3b;color:#fff}
+#ok-windows-vision .wv-icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#ok-windows-vision .wv-result-value.long{font-size:20px;line-height:1.45;max-height:92px;overflow:hidden;letter-spacing:-.4px;white-space:pre-wrap}
+#ok-windows-vision .wv-result-value.empty{font-size:14px;letter-spacing:0;color:var(--wv-sub);min-height:47px;display:flex;align-items:center}
+#ok-windows-vision .wv-footer-status[data-error=true]{color:#efbca4}
+#ok-windows-vision .wv-footer-status[data-error=true] .wv-dot{background:#efbca4}
+#ok-windows-vision .wv-footer{flex:none}
+#ok-windows-vision .wv-footer-status button{color:inherit;font:inherit;background:none;border:0;text-align:left;padding:0;cursor:pointer}
+#ok-windows-vision .wv-footer-status{max-width:85%}
+#ok-windows-vision .wv-footer-status span[data-value=status]{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#ok-windows-vision .wv-account-extra{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+#ok-windows-vision .wv-catalog-note{margin:12px 0 0;font-size:11px;color:var(--wv-sub)}
+#ok-windows-vision .wv-catalog-note.error{color:#efbca4}
+#ok-windows-vision details{font-size:11px;color:var(--wv-sub);margin-top:15px}
+#ok-windows-vision details>label{margin-top:10px}
+#ok-windows-vision .wv-detail-answer h3{white-space:pre-wrap;font-size:18px;line-height:1.8;overflow-wrap:anywhere;font-weight:500}
+#ok-windows-vision .wv-comparison p{font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+#ok-windows-vision .wv-history-row{cursor:default}
+#ok-windows-vision .wv-history-text{background:none;border:0;text-align:left;padding:0;color:var(--wv-text);font:inherit;width:100%}
+#ok-windows-vision .wv-history-row .wv-actions{gap:3px}
+#ok-windows-vision .wv-history-time{white-space:nowrap}
+#ok-windows-vision .wv-history-symbol{font-family:inherit}
+#ok-windows-vision .wv-quick-models{margin:0 0 13px;display:flex;gap:8px}
+#ok-windows-vision .wv-setting-row .wv-check{margin:10px 0}
+#ok-windows-vision .wv-dialog{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:100;padding:25px}
+#ok-windows-vision .wv-dialog .wv-panel{max-width:570px;width:100%;max-height:85%;overflow:auto}
+#ok-windows-vision .wv-dialog pre{font:12px/1.8 OKWindowsVision,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
+#ok-windows-vision .setup-body{display:grid;grid-template-columns:42% 1fr;flex:1;overflow:auto}
+#ok-windows-vision .setup-art{padding:35px 23px;display:flex;flex-direction:column;justify-content:center;gap:15px;background:var(--wv-side);border-right:1px solid var(--wv-line)}
+#ok-windows-vision .setup-art img{width:100%;max-height:260px;object-fit:contain}
+#ok-windows-vision .setup-art p{font-size:12px;color:var(--wv-sub);text-align:center}
+#ok-windows-vision .setup-main{padding:36px;display:flex;flex-direction:column;justify-content:center;gap:20px}
+#ok-windows-vision .setup-main .wv-form-bottom{justify-content:stretch;margin-top:4px}
+#ok-windows-vision .setup-main .wv-form-bottom button{flex:1}
+#ok-windows-vision progress{width:100%;accent-color:var(--wv-accent);height:6px}
+#ok-windows-vision .setup-path{font-size:10px;overflow-wrap:anywhere;color:var(--wv-sub);margin-top:10px}
