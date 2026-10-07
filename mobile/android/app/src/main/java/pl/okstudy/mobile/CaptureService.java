@@ -13,12 +13,13 @@ import android.media.projection.*;
 import android.os.*;
 import android.provider.Settings;
 import android.view.*;
-import android.widget.TextView;
+import android.widget.*;
 import java.util.concurrent.*;
 
 public final class CaptureService extends Service {
   static final String START = "pl.okstudy.START",
       STOP = "pl.okstudy.STOP",
+      REPEAT = "pl.okstudy.REPEAT",
       CANCEL = "pl.okstudy.CANCEL";
   private static final int NOTICE = 1701;
   private final Handler main = new Handler(Looper.getMainLooper());
@@ -31,6 +32,8 @@ public final class CaptureService extends Service {
   private WindowManager windows;
   private TextView button, answer;
   private CropPanel cropPanel;
+  private LinearLayout quickMenu;
+  private final Runnable hideMenu = this::removeMenu;
   private WindowManager.LayoutParams buttonPosition;
   private Prefs prefs;
   private Speech speech;
@@ -73,6 +76,14 @@ public final class CaptureService extends Service {
       cancel();
       return START_NOT_STICKY;
     }
+    if (REPEAT.equals(intent.getAction())) {
+      String text = intent.getStringExtra("text");
+      if (projection != null && text != null && !text.trim().isEmpty() && text.length() <= 100000) {
+        cancel();
+        showAnswer(text, false);
+      }
+      return START_NOT_STICKY;
+    }
     if (!START.equals(intent.getAction()) || projection != null) return START_NOT_STICKY;
     try {
       if (!Settings.canDrawOverlays(this))
@@ -109,6 +120,7 @@ public final class CaptureService extends Service {
       createReader(size.x, size.y, true);
       createButton();
       AppState.active = true;
+      SessionTile.update(this);
       AppState.error = "";
     } catch (Exception error) {
       AppState.error = message(error);
@@ -224,6 +236,7 @@ public final class CaptureService extends Service {
   @Override
   public void onConfigurationChanged(Configuration configuration) {
     super.onConfigurationChanged(configuration);
+    removeMenu();
     if (Build.VERSION.SDK_INT < 34) {
       Point p = screen();
       resize(p.x, p.y);
@@ -295,6 +308,10 @@ public final class CaptureService extends Service {
               @Override
               public void onLongPress(android.view.MotionEvent event) {
                 cancel();
+                if (prefs.longPress().equals("menu")) {
+                  showMenu();
+                  return;
+                }
                 AppState.explainRequested = prefs.longPress().equals("explain");
                 startActivity(
                     new Intent(CaptureService.this, MainActivity.class)
@@ -351,6 +368,7 @@ public final class CaptureService extends Service {
   }
 
   private void analyze() {
+    removeMenu();
     AppState.trace("analyze");
     if (ending) return;
     if (active != null) {
@@ -434,11 +452,33 @@ public final class CaptureService extends Service {
   private void prepareTask(
       ApiClient.Cancel token, int current, AiConnection connection, String jpeg, boolean only) {
     RectF saved = CropPanel.saved(prefs, jpeg);
-    if (prefs.cropMode().equals("full")) {
+    boolean readable = true;
+    if (prefs.store.getBoolean("qualityCheck", true) && !prefs.cropMode().equals("select")) {
+      Bitmap sample = null;
+      try {
+        byte[] bytes =
+            android.util.Base64.decode(
+                jpeg.substring(jpeg.indexOf(',') + 1), android.util.Base64.DEFAULT);
+        sample = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        readable =
+            sample != null
+                && ImageQuality.inspect(
+                        sample,
+                        prefs.cropMode().equals("saved") && saved != null
+                            ? saved
+                            : new RectF(0, 0, 1, 1))
+                    .isEmpty();
+      } catch (Exception ignored) {
+        readable = false;
+      } finally {
+        if (sample != null) sample.recycle();
+      }
+    }
+    if (prefs.cropMode().equals("full") && readable) {
       sendTask(token, current, connection, jpeg, null, only);
       return;
     }
-    if (prefs.cropMode().equals("saved") && saved != null) {
+    if (prefs.cropMode().equals("saved") && saved != null && readable) {
       sendTask(token, current, connection, jpeg, saved, only);
       return;
     }
@@ -489,6 +529,11 @@ public final class CaptureService extends Service {
                   AppState.answer = text;
                   AppState.error = "";
                   AppState.remember(selected, connection);
+                  try {
+                    AnswerHistory.add(CaptureService.this, text, connection);
+                  } catch (Exception e) {
+                    AppState.error = "Odpowiedź gotowa, lecz nie zapisano historii.";
+                  }
                   if (!prefs.voice().equals("only")) showAnswer(text, false);
                   if (!prefs.voice().equals("off")) speech.read(text, e -> fail(null, e));
                 });
@@ -650,12 +695,75 @@ public final class CaptureService extends Service {
     if (error instanceof org.json.JSONException
         || error instanceof java.security.GeneralSecurityException)
       return "Nie udało się odczytać poprawnej odpowiedzi AI. Spróbuj ponownie lub zaloguj konto"
-                 + " jeszcze raz.";
+          + " jeszcze raz.";
     return error instanceof java.net.SocketTimeoutException
         ? "Analiza trwała za długo. Spróbuj ponownie."
         : error.getMessage() == null
             ? "Nie udało się wykonać analizy. Sprawdź połączenie."
             : error.getMessage();
+  }
+
+  private void showMenu() {
+    removeMenu();
+    quickMenu = Design.column(this);
+    quickMenu.setPadding(dp(8), dp(4), dp(8), dp(8));
+    quickMenu.setBackground(Design.shape(this, Design.CARD, 16));
+    String[] labels = {
+      "Analizuj", "Powtórz odpowiedź", "Wyjaśnij w aplikacji", "Zmień profil", "Zamknij"
+    };
+    for (int i = 0; i < labels.length; i++) {
+      final int action = i;
+      Button item = Design.button(this, labels[i], i == 0);
+      item.setTextSize(12);
+      quickMenu.addView(item, new android.widget.LinearLayout.LayoutParams(-1, dp(44)));
+      item.setOnClickListener(
+          v -> {
+            removeMenu();
+            if (action == 0) button.performClick();
+            if (action == 1 && !AppState.answer.isEmpty()) showAnswer(AppState.answer, false);
+            if (action == 2) {
+              AppState.explainRequested = true;
+              startActivity(
+                  new Intent(this, MainActivity.class)
+                      .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            }
+            if (action == 3) {
+              String[] names = {"discreet", "readable", "study", "voice"};
+              int next =
+                  (java.util.Arrays.asList(names)
+                              .indexOf(prefs.store.getString("profile", "readable"))
+                          + 1)
+                      % names.length;
+              prefs.profile(names[next]);
+              // A profile change is local and never starts an AI/voice request.
+              showAnswer(new String[] {"Dyskretny", "Czytelny", "Nauka", "Głos"}[next], false);
+            }
+          });
+    }
+    WindowManager.LayoutParams lp =
+        new WindowManager.LayoutParams(
+            dp(205),
+            -2,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT);
+    lp.gravity = Gravity.TOP | Gravity.LEFT;
+    Point size = screen();
+    lp.x = Math.max(0, Math.min(size.x - dp(205), buttonPosition.x - dp(155)));
+    lp.y = Math.max(0, Math.min(size.y - dp(270), buttonPosition.y));
+    windows.addView(quickMenu, lp);
+    main.postDelayed(hideMenu, 5000);
+  }
+
+  private void removeMenu() {
+    main.removeCallbacks(hideMenu);
+    if (quickMenu != null) {
+      try {
+        windows.removeView(quickMenu);
+      } catch (IllegalArgumentException ignored) {
+      }
+      quickMenu = null;
+    }
   }
 
   private void cancel() {
@@ -664,6 +772,7 @@ public final class CaptureService extends Service {
     active = null;
     capture = null;
     removeCrop();
+    removeMenu();
     pauseFrames();
     generation++;
     speech.stop();
@@ -675,8 +784,10 @@ public final class CaptureService extends Service {
   public void onDestroy() {
     ending = true;
     AppState.active = false;
+    SessionTile.update(this);
     AppState.clearTask();
     removeCrop();
+    removeMenu();
     if (active != null) active.cancel();
     capture = null;
     main.removeCallbacksAndMessages(null);

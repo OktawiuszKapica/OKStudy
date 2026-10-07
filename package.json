@@ -1,11 +1,13 @@
 {
   "name": "okstudy",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:installer": "node scripts/build-installer.mjs",
+    "build:desktop": "node scripts/desktop-build.mjs",
+    "test:desktop": "node tests/desktop.mjs",
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node tests/browser.mjs",
     "test:presentation": "node tests/presentation-browser.mjs",

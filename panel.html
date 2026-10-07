@@ -57,6 +57,7 @@
         <div id="sources" class="sources"></div>
         <div id="searchSuggestions" class="search-suggestions"></div>
         <div class="answer-actions" id="answerActions">
+          <button class="button secondary" id="verifyAnswer">Sprawdź innym modelem</button>
           <button class="button secondary" id="copyAnswer"><span data-icon="copy"></span>Kopiuj</button
           ><button
             class="icon-button"
@@ -97,6 +98,24 @@
         >Zarządzaj użyciem ChatGPT ↗</a
       >
     </main>
+    <dialog id="verifyDialog" class="plan-welcome" aria-labelledby="verifyTitle">
+      <form id="verifyForm">
+        <h2 id="verifyTitle">Sprawdź innym modelem</h2>
+        <p>
+          Drugi model otrzyma ten sam materiał bez pierwszej odpowiedzi. To dodatkowe użycie planu ChatGPT lub
+          płatnego API.
+        </p>
+        <label for="verifyModel">Drugi model</label
+        ><select id="verifyModel"></select>
+        <label for="verifyCustom">Własny identyfikator · opcjonalnie</label
+        ><input id="verifyCustom" maxlength="120" spellcheck="false" />
+        <p class="hint">Obie odpowiedzi pojawią się w panelu. Zgodność nie gwarantuje poprawności.</p>
+        <div class="row wrap">
+          <button class="button primary" id="verifySubmit" type="submit">Sprawdź</button
+          ><button class="button secondary" id="verifyCancel" type="button">Anuluj</button>
+        </div>
+      </form>
+    </dialog>
     <footer id="composer" class="composer" hidden>
       <div class="suggested-questions" id="suggestions">
         <button data-question="Wyjaśnij to prostszymi słowami.">Prościej</button

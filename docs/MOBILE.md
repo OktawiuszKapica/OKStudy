@@ -1,6 +1,6 @@
 # OKStudy na telefonie i tablecie
 
-Stan: Android 0.2.2 i źródła Apple 0.1.0, 7 października 2026, oddzielnie od rozszerzenia 2.1.0. Android ma nakładkę, logowanie ChatGPT, edytor kadru, profile i nowy wygląd. W 0.2.2 poprawiono zbieranie tekstu ze strumienia ChatGPT i dodano diagnostykę modeli i odpowiedzi. Na prośbę użytkownika 0.2.2 nie uruchamiano w emulatorze ani na telefonie; testy wykona on osobiście. Instrukcja: [mobile/README.md](../mobile/README.md), weryfikacja: [mobile/TESTING.md](../mobile/TESTING.md), [plan testów telefonu](../mobile/PHONE-TESTS.md). Źródła Apple nie zostały skompilowane na tej maszynie Windows; nie ma IPA ani TestFlight.
+Stan: Android 0.3.0, rozszerzenie 2.2.0, osobny Windows 0.1.0 i źródła Apple 0.1.0, 7 października 2026. Android dodaje małe menu OK, kafelek, historię, ulubione modele, kontrolę kadru i niezależne porównanie modeli. Pulpit jest krótszy i zachowuje dedykowane grafiki. Użytkownik potwierdził działanie 0.2.2. Zgodnie z prośbą nowego Androida nie uruchamiano; tylko kompilacja, Lint i podpis. Instrukcja: [mobile/README.md](../mobile/README.md), [weryfikacja](../mobile/TESTING.md), [scenariusze telefonu](../mobile/PHONE-TESTS.md). Źródła Apple pozostają nieskompilowane na Windows — bez IPA/TestFlight.
 
 ## Obsługa
 
@@ -16,7 +16,7 @@ Implementacja w `mobile/android/`: `MediaProjection`, usługa pierwszoplanowa ty
 
 Przycisk otrzymuje mały obszar dotyku, a okno odpowiedzi ma przepuszczać dotknięcia zgodnie z ograniczeniami systemu. Nie należy stosować pełnoekranowej niewidocznej warstwy przechwytującej gesty. Część aplikacji może chronić swój obraz; brak dostępnego obrazu trzeba pokazać jako błąd, bez wysyłania poprzedniej klatki. [Okna i flagi Androida](https://developer.android.com/reference/android/view/WindowManager.LayoutParams)
 
-Klucze i tokeny są szyfrowane przez Android Keystore. Ostatni kadr jest dostępny do wyjaśnienia przez 5 minut w pamięci, z wcześniejszym usuwaniem po wyczyszczeniu, zmianie połączenia lub zakończeniu sesji. Wyniki dawnych testów 0.1.0 nie potwierdzają wydania 0.2.2. Na telefonie pozostają do sprawdzenia logowanie i odnawianie konta, kadrowanie, gesty, nowy interfejs, blokada, nakładki producenta, prawdziwe modele, głos oraz bateria.
+Klucze i tokeny są szyfrowane przez Android Keystore. Ostatni kadr jest dostępny do wyjaśnienia przez 5 minut w pamięci, z wcześniejszym usuwaniem po wyczyszczeniu, zmianie połączenia lub zakończeniu sesji. Użytkownik potwierdził działanie 0.2.2; nie zastępuje to sprawdzenia nowych funkcji 0.3.0. Na telefonie pozostają do sprawdzenia menu, kafelek, historia, ulubione modele, kontrola kadru, porównanie modeli, nowy pulpit oraz zachowanie przy blokadzie i nakładkach producenta.
 
 ## iPhone i iPad
 
@@ -28,7 +28,7 @@ Projekt `mobile/ios/` dla iOS/iPadOS 17+ zawiera wybór zrzutu ze Zdjęć, arkus
 
 ## Połączenia i modele
 
-Android 0.2.2 zawiera osobną natywną integrację Sign in with ChatGPT (PKCE, lokalny callback, OIDC/JWKS, magazyn Keystore, odnawianie i wylogowanie) oraz dotychczasowe cztery API. Nie wymaga modułu Windows. Wybór modelu planu jest osobny dla każdej rejestracji konta. Użytkownik potwierdził logowanie i pobranie modeli, ale w 0.2.1 nadal otrzymał błąd braku tekstu. W 0.2.2 usunięto ograniczenie parsera do ostatniego zdarzenia; po sukcesie zbiera także tekst przesyłany wcześniej w fragmentach. Dokładny przebieg odpowiedzi na telefonie pozostaje niepotwierdzony. Limity nie uruchamiają płatnego API jako zastępstwa. Źródła Apple 0.1.0 nadal wymagają klucza API. [Oficjalna dokumentacja OpenAI](https://developers.openai.com/siwc/token-sharing-open-source).
+Android 0.3.0 zachowuje natywną integrację Sign in with ChatGPT (PKCE, lokalny callback, OIDC/JWKS, magazyn Keystore, odnawianie i wylogowanie) oraz cztery API. Nie wymaga modułu Windows. Wybór modelu planu jest osobny dla każdej rejestracji konta. W 0.2.2 poprawiono odbiór tekstu w strumieniu i użytkownik potwierdził działanie analizy. Nowego wydania 0.3.0 nie uruchamiano na Androidzie. Limity nie uruchamiają płatnego API jako zastępstwa. Źródła Apple 0.1.0 nadal wymagają klucza API. [Oficjalna dokumentacja OpenAI](https://developers.openai.com/siwc/token-sharing-open-source).
 
 **Połączenia → Diagnostyka ChatGPT** pokazuje metadane ostatniego pobrania katalogu i analizy. Raport odróżnia model nieotrzymany od serwera od modelu ukrytego przez filtr `visibility`; wyszczególnia zgłoszone `gpt-6.1-sol`, `gpt-6-sol`, `gpt-6-luna`. Nie jest to lista zapasowa modeli. Przyczyna ich braku wymaga raportu z telefonu. Raport można skopiować, jest tylko w pamięci i nie zawiera poświadczeń, adresu konta, obrazu ani treści zadania lub odpowiedzi.
 

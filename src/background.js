@@ -13,6 +13,7 @@ import { nativeRequest } from './native.js';
 import { expressResult } from './text.js';
 import { startRemoteSpeech, stopRemoteSpeech, finishRemoteSpeech } from './audio.js';
 import { accountCatalog } from './model-catalog.js';
+import { libraryScope, modelLibrary, validModelId } from './model-tools.js';
 import {
   listProfiles,
   saveProfile,
@@ -29,6 +30,26 @@ const jobs = new Map(),
   images = new Map(),
   stateWrites = new Map();
 const badgeTimers = new Map();
+async function catalogFor(provider, auth, key, force = false, favorite) {
+  if (!Object.hasOwn(PROVIDERS, provider)) throw new Error('Nieznany dostawca.');
+  const plan = provider === 'openai' && auth === 'chatgpt';
+  const account = plan ? await nativeRequest('status') : null;
+  const scope = await libraryScope(plan ? 'chatgpt' : provider, plan ? account.activeId : key);
+  let catalog;
+  if (plan) {
+    if (!account.connected) throw new Error('Połącz konto ChatGPT w ustawieniach.');
+    const cacheKey = `${scope}.session`;
+    const cached = (await chrome.storage.session.get(cacheKey))[cacheKey];
+    if (!force && cached && Date.now() - cached.updatedAt < 6 * 3600000)
+      catalog = { ...cached, source: 'cache' };
+    else {
+      catalog = { models: await nativeRequest('models'), source: 'live', updatedAt: Date.now() };
+      await chrome.storage.session.set({ [cacheKey]: catalog });
+    }
+  } else catalog = await accountCatalog(provider, key, force);
+  const library = await modelLibrary(scope, catalog.models, catalog.source === 'live', favorite);
+  return { ...catalog, ...library, ...(plan ? { accountId: account.activeId } : {}) };
+}
 async function clearBadge(tabId) {
   clearTimeout(badgeTimers.get(tabId));
   badgeTimers.delete(tabId);
@@ -196,14 +217,21 @@ async function infer(job, settings, entry, image) {
   const started = Date.now();
   await jobState(job, { status: 'running', entryId: entry.id, text: '', mode: entry.mode });
   if (!job.alive()) return;
-  await tell(job.tabId, { type: 'working', jobId: job.id, settings });
+  if (!entry.verification) await tell(job.tabId, { type: 'working', jobId: job.id, settings });
   const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo().catch(() => {}), 20000);
   try {
     let result;
+    if (entry.auth === 'chatgpt' && entry.accountId) {
+      const account = await nativeRequest('status', {}, signal);
+      if (entry.accountId !== account.activeId)
+        throw new Error('Konto zostało zmienione. Zaznacz zadanie ponownie.');
+    }
     if (entry.provider === 'openai' && entry.auth === 'chatgpt')
       result = await nativeRequest('infer', { args }, signal, partial);
     else {
       const key = (await getKeys())[entry.provider];
+      if (entry.credentialScope && entry.credentialScope !== (await libraryScope(entry.provider, key)))
+        throw new Error('Klucz został zmieniony. Zaznacz zadanie ponownie dla tego połączenia.');
       if (!key)
         throw new Error(`Połącz ${PROVIDERS[entry.provider].name} w ustawieniach, aby rozpocząć naukę.`);
       result = await requestAI(args, key, signal, partial);
@@ -223,6 +251,7 @@ async function infer(job, settings, entry, image) {
     await jobState(job, { status: 'done', entryId: entry.id });
     if (!job.alive()) return;
     await clearBadge(job.tabId);
+    if (entry.verification) return;
     await tell(job.tabId, { type: 'answer', text: result.text, settings, entryId: entry.id });
     autoSpeak(completed, settings, job.tabId);
   } finally {
@@ -283,7 +312,8 @@ async function launch(tabId, kind, internetOverride, selectedText) {
     const provider = settings.provider,
       auth = provider === 'openai' ? settings.openaiAuth : 'api';
     job.auth = auth;
-    let model = settings.models[provider];
+    let model = settings.models[provider],
+      accountId;
     if (auth === 'chatgpt') {
       const list = await nativeRequest('models', {}, job.controller.signal);
       if (!list.length)
@@ -293,6 +323,7 @@ async function launch(tabId, kind, internetOverride, selectedText) {
           'Wybrany model nie jest już dostępny na tym koncie ChatGPT. Odśwież listę w ustawieniach i wybierz dostępny model.'
         );
       model = settings.chatgptModel || list[0].id;
+      accountId = (await nativeRequest('status', {}, job.controller.signal)).activeId;
     }
     const entry = {
       id: crypto.randomUUID(),
@@ -301,6 +332,10 @@ async function launch(tabId, kind, internetOverride, selectedText) {
       provider,
       model,
       auth,
+      ...(accountId ? { accountId } : {}),
+      ...(auth !== 'chatgpt'
+        ? { credentialScope: await libraryScope(provider, (await getKeys())[provider]) }
+        : {}),
       mode: settings.mode,
       answerOnly: settings.mode === 'express' && settings.expressAnswerOnly,
       internet: internetOverride ?? settings.internet,
@@ -347,6 +382,40 @@ async function followup(tabId, id, question, explain = false) {
     if (jobs.get(tabId) === job) jobs.delete(tabId);
   }
 }
+async function verifyAnswer(tabId, id, model) {
+  if (!validModelId(model)) throw new Error('Wybierz drugi model.');
+  const original = (await getHistory()).find((e) => e.id === id);
+  if (!original || original.model === model)
+    throw new Error('Wybierz model inny niż w pierwszej odpowiedzi.');
+  const cached = images.get(id);
+  const image = cached && Date.now() - cached.at < 30 * 60000 ? cached.image : undefined;
+  if (original.source !== 'text' && !image)
+    throw new Error('Kadr wygasł. Zaznacz zadanie ponownie przed sprawdzeniem.');
+  if (original.auth === 'chatgpt' && !original.accountId)
+    throw new Error('To starsza odpowiedź bez powiązania z kontem. Zaznacz zadanie ponownie.');
+  const first = original.messages.filter((m) => m.role === 'assistant').at(-1)?.text;
+  if (!first) throw new Error('Brak pierwszej odpowiedzi.');
+  const entry = {
+    ...original,
+    id: crypto.randomUUID(),
+    createdAt: Date.now(),
+    tabId,
+    model,
+    messages: [original.messages[0]],
+    verification: { originalId: id, model: original.model, text: first },
+    sources: [],
+    title: `Sprawdzenie: ${original.title}`,
+  };
+  const job = makeJob(tabId);
+  try {
+    await infer(job, { ...(await getSettings()), voice: 'off' }, entry, image);
+  } catch (error) {
+    await markError(job, error);
+  } finally {
+    if (jobs.get(tabId) === job) jobs.delete(tabId);
+  }
+}
+
 async function explainLast(tabId) {
   const recent = (await chrome.storage.session.get(jobKey(tabId)))[jobKey(tabId)];
   const history = await getHistory();
@@ -426,17 +495,23 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
         return snapshot(tabId);
       case 'settings.save':
         return updateSettings(request.settings || {}, request.keys);
+      case 'models.favorite':
       case 'models.list': {
         const settings = await getSettings();
         const provider = request.provider || settings.provider;
         const plan = provider === 'openai' && (request.auth || settings.openaiAuth) === 'chatgpt';
-        if (plan) return { models: await nativeRequest('models'), source: 'live', updatedAt: Date.now() };
         const key =
           typeof request.key === 'string' &&
           sender.url?.split('#')[0] === chrome.runtime.getURL('options.html')
             ? request.key.trim().slice(0, 4096)
             : (await getKeys())[provider];
-        return accountCatalog(provider, key, request.force === true);
+        return catalogFor(
+          provider,
+          plan ? 'chatgpt' : 'api',
+          key,
+          request.force === true,
+          request.type === 'models.favorite' ? request.model : undefined
+        );
       }
       case 'profiles.list':
         return listProfiles();
@@ -494,6 +569,12 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
           state(tabId, { status: 'error', error: error.message })
         );
         return { started: true };
+      case 'verify':
+        await usableTab(tabId);
+        void verifyAnswer(tabId, request.id, request.model).catch((error) =>
+          state(tabId, { status: 'error', error: error.message })
+        );
+        return { started: true };
       case 'cancel':
         await cancel(tabId);
         return {};
@@ -538,7 +619,7 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
         for (const job of jobs.values()) if (job.auth === 'chatgpt') await cancel(job.tabId);
         return nativeRequest('select', { accountId: request.accountId });
       case 'chatgpt.models':
-        return nativeRequest('models');
+        return (await catalogFor('openai', 'chatgpt', undefined, request.force === true)).models;
       default:
         throw new Error('Nieobsługiwana operacja.');
     }
@@ -570,9 +651,9 @@ chrome.commands.onCommand.addListener((command, commandTab) => {
     if (command === 'toggle_model') {
       const s = await getSettings(),
         plan = s.provider === 'openai' && s.openaiAuth === 'chatgpt';
-      const list = plan
-        ? await nativeRequest('models')
-        : (await accountCatalog(s.provider, (await getKeys())[s.provider])).models;
+      const catalog = await catalogFor(s.provider, plan ? 'chatgpt' : 'api', (await getKeys())[s.provider]);
+      const favorites = catalog.models.filter((m) => m.favorite).slice(0, 2);
+      const list = favorites.length ? favorites : catalog.models;
       if (!list.length) return;
       const current = plan ? s.chatgptModel : s.models[s.provider];
       const next = list[(list.findIndex((m) => m.id === current) + 1) % list.length];

@@ -75,6 +75,17 @@ final class Design {
     parent.addView(image, p);
   }
 
+  static void row(Context c, LinearLayout parent, Button... buttons) {
+    LinearLayout row = new LinearLayout(c);
+    parent.addView(row);
+    for (int i = 0; i < buttons.length; i++) {
+      buttons[i].setTextSize(12);
+      LinearLayout.LayoutParams cell = new LinearLayout.LayoutParams(0, dp(c, 48), 1);
+      cell.setMargins(i == 0 ? 0 : dp(c, 4), dp(c, 8), i == buttons.length - 1 ? 0 : dp(c, 4), 0);
+      row.addView(buttons[i], cell);
+    }
+  }
+
   static TextView chip(Context c, String label) {
     TextView v = text(c, label, 10, LIME, true);
     v.setLetterSpacing(.08f);

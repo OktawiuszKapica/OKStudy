@@ -1,5 +1,17 @@
 # Historia wersji
 
+## Rozszerzenie 2.2.0 / Android 0.3.0 / Windows 0.1.0 — 7 października 2026
+
+- Osobna aplikacja Windows x64: ikona przy zegarze, globalne skróty, zaznaczanie obrazu nad innymi programami i odpowiedź przepuszczająca kliknięcia. Instalator dla bieżącego użytkownika i ZIP portable zawierają sprawdzony runtime; nie trzeba instalować Node. Konta ChatGPT współdzielą szyfrowany magazyn modułu rozszerzenia. Cztery API pozostają osobnym sposobem połączenia.
+- Android: mniejszy pulpit Start, bieżący model, szybkie profile i dwa ulubione modele. Przytrzymanie OK domyślnie otwiera niewielkie menu z analizą, powtórką, wyjaśnieniem i zmianą profilu; można zachować dotychczasową akcję w ustawieniach. Menu znika po działaniu lub 5 sekundach.
+- Kafelek szybkich ustawień Androida rozpoczyna lub kończy sesję. Uruchomienie nadal wymaga zgód systemu; przy zablokowanym telefonie wymaga odblokowania.
+- Historia Androida: do 60 odpowiedzi tekstowych / 600 tys. znaków, wyszukiwanie, do 20 przypiętych pozycji, powtórka bez zapytania. Domyślnie w pamięci procesu; opcjonalny trwały zapis przez Keystore. Windows ma osobną historię szyfrowaną DPAPI, także opt-in.
+- Wszystkie trzy wersje mają ulubione modele i dwa szybkie wybory, katalog odświeżany po 6 godzinach oraz oznaczenie nowych identyfikatorów przez 24 godziny. Metadane są rozdzielone według konta/klucza. Nowy model nie jest oznaczany jako dostępny bez katalogu serwera; ręczny identyfikator nie potwierdza uprawnień.
+- Lokalne sprawdzenie wielkości, kontrastu i szczegółów wybranego kadru z ostrzeżeniem i akcją Wyślij mimo ostrzeżenia. To heurystyka; można ją wyłączyć. Nie używa AI ani OCR. Android sprawdza również kadr zapisany/cały obraz i w razie wątpliwości otwiera edytor.
+- Ręczne Sprawdź innym modelem: ten sam materiał jest wysyłany jako niezależne zapytanie bez pierwszej odpowiedzi. Dwa wyniki są widoczne w aplikacji/panelu, pierwszy pozostaje zachowany. Funkcja uprzedza o dodatkowym użyciu planu lub płatnego API. Zgodność wyników nie stanowi dowodu poprawności. Obraz wymaga dostępnej pamięci kadru: Android/Windows 5 min, rozszerzenie 30 min.
+- Wspólny odbiornik Responses na PC zbiera także końcowe zdarzenia tekstu i wiadomości, gdy ostatnie zdarzenie nie powtarza odpowiedzi. Nie dubluje tekstu, pomija kanał analizy i nadal wymaga ukończenia strumienia bez późniejszego błędu.
+- Nowe wydania Androida zachowują identyfikator i klucz podpisu. Zgodnie z dyspozycją użytkownika żadnych emulatorów ani uruchomień/testów Androida; tylko kompilacja, Lint i kontrola APK. Weryfikację urządzenia wykonuje użytkownik.
+
 ## Android 0.2.2 — fragmenty odpowiedzi i diagnostyka modeli
 
 - Odbiornik Responses zbiera tekst z `response.output_text.delta`, `output_text.done`, `content_part.done` i `output_item.done`, także gdy końcowe zdarzenie nie powtarza treści. Powtórzony tekst nie jest doklejany drugi raz. Wymagane pozostaje `response.completed`; urwana analiza, odmowa i późniejszy błąd są odrzucane. Reasoning, argumenty narzędzi i kanał analizy nie trafiają do wyniku.

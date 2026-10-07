@@ -1,8 +1,8 @@
-# OKStudy Mobile — Android 0.2.2
+# OKStudy Mobile — Android 0.3.0
 
-Android ma pływający przycisk, kadrowanie i odpowiedź nad inną aplikacją, logowanie kontem ChatGPT, profile oraz wygląd z ilustracjami. Wersja 0.2.2 poprawia zbieranie tekstu z odpowiedzi ChatGPT i dodaje diagnostykę katalogu modeli. Nadal można korzystać z API Gemini, Claude, OpenAI lub Grok. Projekt iPhone/iPad pozostaje na etapie źródeł 0.1.0 z kluczami API, Zdjęciami, Udostępnij i Skrótami.
+Android ma pływający przycisk, kadrowanie, odpowiedź nad inną aplikacją, logowanie ChatGPT, profile i dedykowane ilustracje. Wersja 0.3.0 dodaje krótszy pulpit, małe menu przy OK, kafelek szybkich ustawień, historię, ulubione modele, kontrolę czytelności kadru i niezależne sprawdzanie innym modelem. Nadal obsługuje API Gemini, Claude, OpenAI i Grok. Projekt iPhone/iPad pozostaje w źródłach 0.1.0.
 
-**Stan:** wersja testowa Androida skompilowana i podpisana na Windows. Zgodnie z dyspozycją użytkownika **0.2.2 nie uruchamiano w emulatorze ani na telefonie**; wykonano kompilację, analizę statyczną i weryfikację podpisu. Testy konta i działania przeprowadza użytkownik według [PHONE-TESTS.md](PHONE-TESTS.md). Źródła Apple wymagają kompilacji i testów w Xcode na Macu. [Weryfikacja i historia](TESTING.md).
+**Stan:** 0.3.0 skompilowana i podpisana na Windows. Zgodnie z dyspozycją użytkownika **nie uruchamiano Androida ani jego testów na emulatorze lub telefonie**; wykonano kompilację, Lint i kontrolę podpisu. Użytkownik potwierdził działanie poprzedniej 0.2.2. Nowe funkcje sprawdza osobiście według [PHONE-TESTS.md](PHONE-TESTS.md). Źródła Apple wymagają Maca/Xcode. [Weryfikacja i historia](TESTING.md).
 
 ## Nowy wygląd i sterowanie
 
@@ -15,7 +15,7 @@ Android ma pływający przycisk, kadrowanie i odpowiedź nad inną aplikacją, l
 
 ## Android — instalacja
 
-1. Zakończ aktywną sesję OKStudy, przenieś `releases/OKStudy-Mobile-0.2.2.apk` na telefon i otwórz plik. Zezwól aplikacji Pliki/przeglądarce na instalację APK, jeśli Android o to poprosi. Minimum Android 8.0. Aktualizacja zachowuje podpis, identyfikator i ustawienia 0.1.0/0.2.x — nie odinstalowuj wcześniejszej wersji.
+1. Zakończ aktywną sesję OKStudy, przenieś `releases/OKStudy-Mobile-0.3.0.apk` na telefon i otwórz plik. Zezwól aplikacji Pliki/przeglądarce na instalację APK, jeśli Android o to poprosi. Minimum Android 8.0. Aktualizacja zachowuje podpis, identyfikator i ustawienia 0.1.0/0.2.x — nie odinstalowuj wcześniejszej wersji.
 2. W zakładce **Połączenia** wybierz **ChatGPT — Twój plan**, dotknij **Continue with ChatGPT** i zatwierdź połączenie w przeglądarce. Po komunikacie wróć do OKStudy. Alternatywnie wybierz dostawcę API i zapisz własny klucz. Następnie **Pobierz modele konta**, wybierz model obsługujący obrazy i **Zapisz połączenie**. Nowy identyfikator można wpisać w polu Model lub przez „Wpisz identyfikator” w oknie listy. Przykład: `gpt-6.1-sol`; dostępność potwierdza dopiero zadanie. Lista pochodzi z OpenAI dla tego połączenia, więc nie musi pokrywać się z listą w ChatGPT/Codex.
 3. Wybierz „Uruchom pomoc na ekranie”. Włącz „Wyświetlanie nad innymi aplikacjami”, zatwierdź powiadomienia i systemową zgodę na przechwytywanie. Dla działania podczas zmiany aplikacji wybierz **cały ekran**; wybranie jednej aplikacji ogranicza sesję do niej.
 4. Otwórz zadanie i **stuknij dwa razy w mały przycisk OK**. Domyślnie wybierz fragment zrzutu i zatwierdź „Analizuj zaznaczony fragment”. Pojedyncze stuknięcie i pracę bez edytora kadru ustawisz w Wyglądzie. Przeciągnięcie przesuwa przycisk; przytrzymanie otwiera aplikację albo wyjaśnienie, zgodnie z wyborem.
@@ -33,7 +33,7 @@ Nie jest wymagany Chrome ani moduł Windows. Nie trzeba przyznawać Dostępnośc
 
 ## Konta, modele i obrazy
 
-**Android 0.2.2 ma natywną integrację Sign in with ChatGPT**, bez modułu Windows. Logowanie otwiera systemową przeglądarkę; po zgodzie wracasz do aplikacji. Obsługiwane są osobne rejestracje kont, odnawianie sesji, wylogowanie oraz odsyłacz do limitów. Nie ma automatycznego przełączenia na płatne API. Użytkownik potwierdził rozpoznanie konta i pobranie modeli, lecz w 0.2.1 nadal zgłosił brak tekstu odpowiedzi. Wersja 0.2.2 zbiera tekst z fragmentów strumienia, bez ograniczenia do ostatniego zdarzenia; działanie wymaga sprawdzenia na telefonie.
+**Android ma natywną integrację Sign in with ChatGPT**, bez modułu Windows. Logowanie otwiera systemową przeglądarkę; po zgodzie wracasz do aplikacji. Obsługuje osobne konta, odnawianie sesji, wylogowanie i odsyłacz do limitów. Nie przełącza się sam na płatne API. Użytkownik potwierdził działanie analizy po poprawkach w 0.2.2. Nie potwierdzono osobno przyczyny brakujących nazw modeli.
 
 Przy problemie pobierz modele, wykonaj analizę i otwórz **Połączenia → Diagnostyka ChatGPT → Kopiuj raport**. Raport pokazuje status HTTP, rodzaje odebranych zdarzeń, liczbę znaków oraz identyfikatory i widoczność modeli zwróconych przez serwer. Wyróżnia `gpt-6.1-sol`, `gpt-6-sol` i `gpt-6-luna`, ale nie dopisuje ich do listy jako dostępnych. Przyczyna ich braku na zgłoszonym koncie pozostaje nieustalona; sam zrzut listy i informacja o abonamencie x5 jej nie rozstrzygają. Raport nie zawiera kluczy, tokenów, adresu konta, obrazu ani treści zadania i odpowiedzi. Pozostaje w pamięci procesu, jest przypisany do aktywnego połączenia i nie wysyła się automatycznie.
 
@@ -41,7 +41,16 @@ Po stronie kodu: Authorization Code + PKCE, stan i nonce, lokalny callback `127.
 
 Katalog pobierany jest z konta dostawcy, z obsługą stronicowania. Nie ma zamkniętej listy nazw modeli. Dotychczasowy wybór nie zmienia się sam po odświeżeniu; usunięcie modelu wymaga świadomego wyboru kolejnego. API katalogu nie zawsze podaje możliwości obrazu, dlatego wybrany model może odrzucić zdjęcie. Wtedy aplikacja pokazuje błąd, bez automatycznego przełączania modelu lub dostawcy.
 
-Android utrzymuje zatwierdzoną przez system sesję obrazu, lecz pobiera świeżą klatkę po geście. W trybie wyboru fragmentu **wysłanie do AI następuje dopiero po zatwierdzeniu kadru**. Przed pobraniem klatki ukrywa własny przycisk i poprzednią odpowiedź. Nie nagrywa filmu ani dźwięku. Klucze i tokeny chroni Android Keystore; w projekcie Apple klucze trafiają do Keychain. Ostatni wysłany kadr jest dostępny w pamięci do wyjaśnienia przez 5 minut; „Wyczyść”, zmiana połączenia lub zakończenie sesji usuwa go wcześniej. Nie zapisuje się w galerii ani na dysku. Brak serwera pośredniczącego OKStudy. Odpowiedzi są przechowywane tylko podczas działania procesu.
+Android utrzymuje zatwierdzoną sesję obrazu, lecz pobiera świeżą klatkę po geście. W trybie wyboru fragmentu **wysłanie do AI następuje po zatwierdzeniu kadru**. Przed pobraniem ukrywa własne nakładki. Nie nagrywa filmu ani dźwięku. Klucze/tokeny chroni Keystore. Ostatni kadr jest dostępny do wyjaśnienia/sprawdzenia przez 5 minut w RAM; wyczyszczenie, zmiana połączenia lub koniec sesji usuwa go wcześniej. Kadr nie jest zapisywany na dysku. Historia przechowuje tylko tekst: domyślnie w RAM procesu, opcjonalnie szyfrowana przez Keystore.
+
+## Nowe funkcje 0.3.0
+
+- Przytrzymaj OK: Analizuj, Powtórz, Wyjaśnij w aplikacji, Zmień profil. Menu znika po akcji/5 s. W Wyglądzie można wybrać dawną akcję przytrzymania.
+- Wygląd → Dodaj kafelek OKStudy: kafelek Androida rozpoczyna/kończy sesję. Uruchomienie nadal przechodzi przez zgody systemowe.
+- Start → Historia: wyszukaj, przypnij/odepnij, usuń lub Pokaż ponownie bez nowego zapytania. Limit 60 pozycji/600 tys. znaków i 20 przypiętych. Wygląd pozwala włączyć trwały zapis i usunąć historię.
+- Połączenia → ★: do 8 ulubionych na konto/klucz, dwa dostępne ulubione na Start. Katalog odświeża się po 6 h, nowe identyfikatory mają Nowy przez 24 h. Pierwsze pobranie nie oznacza całej listy jako nowej.
+- Ostrzeżenie kadru sprawdza lokalnie wielkość, kontrast i szczegóły. Można poprawić ramkę, wyłączyć kontrolę lub wybrać Wyślij mimo ostrzeżenia.
+- Start → Sprawdź modelem: wybierz inny model. Ten sam kadr trafia do niego jako osobne zapytanie bez pierwszej odpowiedzi. To dodatkowe użycie planu/API. Obie odpowiedzi są widoczne w aplikacji; nad zadaniem nie pojawia się dodatkowy przycisk. Zgodność nie gwarantuje poprawności.
 
 ## Aktualizacje
 
@@ -67,4 +76,4 @@ Alternatywnie z własnym JDK/SDK: `cd mobile/android`, następnie `./gradlew ass
 
 ## iPhone i iPad
 
-Zobacz [ios/README.md](ios/README.md). Źródła 0.1.0 Apple nie zostały zmienione przez wydanie Androida 0.2.2 i nadal wymagają klucza API. Projekt wymaga Maca, Xcode i podpisania na koncie Apple. Wynik pokazuje w aplikacji, arkuszu udostępniania albo systemowym wyniku Skrótu. Brak IPA/TestFlight w tym wydaniu.
+Zobacz [ios/README.md](ios/README.md). Źródła 0.1.0 Apple nie zostały zmienione przez wydanie Androida 0.3.0 i nadal wymagają klucza API. Projekt wymaga Maca, Xcode i podpisania na koncie Apple. Wynik pokazuje w aplikacji, arkuszu udostępniania albo systemowym wyniku Skrótu. Brak IPA/TestFlight w tym wydaniu.

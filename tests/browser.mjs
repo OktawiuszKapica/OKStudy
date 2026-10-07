@@ -353,6 +353,29 @@ try {
     'answer panel fits 320px width',
     await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
   );
+  await panel.locator('#verifyAnswer').click();
+  await panel.locator('#verifySubmit:enabled').waitFor();
+  await panel.locator('#verifyModel').selectOption('gemini-3.5-flash-lite');
+  const beforeVerify = await send('snapshot', { tabId });
+  const original = beforeVerify.history.find((e) => e.id === done.history[0].id);
+  await panel.locator('#verifySubmit').click();
+  let verified;
+  for (let i = 0; i < 80; i++) {
+    verified = await send('snapshot', { tabId });
+    if (verified.history[0]?.verification) break;
+    await new Promise((r) => setTimeout(r, 75));
+  }
+  check(
+    'manual verification preserves the original answer and records a separate comparison',
+    verified.history[0].verification?.originalId === original.id &&
+      verified.history.some((e) => e.id === original.id)
+  );
+  check(
+    'second model gets the original task without the first answer',
+    await worker.evaluate(() => globalThis.__testRequests.at(-1).contents.length === 1)
+  );
+  await panel.locator('.message-label').filter({ hasText: 'PIERWSZA ODPOWIEDŹ' }).waitFor();
+  check('both answers render in the panel', (await panel.locator('.message-assistant').count()) === 2);
   check('no browser JavaScript errors', errors.length === 0);
   await writeFile(
     join(output, 'report.json'),

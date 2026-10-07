@@ -46,14 +46,38 @@ final class CropPanel extends LinearLayout {
     remember.setMinHeight(Design.dp(c, 48));
     addView(remember);
     Button send = Design.button(c, "Analizuj zaznaczony fragment", true);
+    TextView warning = Design.text(c, "", 12, Color.rgb(255, 193, 168), false);
+    warning.setVisibility(GONE);
+    addView(warning);
+    RectF acknowledged = new RectF();
     send.setOnClickListener(
-        v -> accept.accept(new Selection(new RectF(canvas.selection), remember.isChecked())));
+        v -> {
+          String issue =
+              new Prefs(c).store.getBoolean("qualityCheck", true)
+                  ? ImageQuality.inspect(canvas.bitmap, canvas.selection)
+                  : "";
+          if (!issue.isEmpty() && !acknowledged.equals(canvas.selection)) {
+            warning.setText(issue);
+            warning.setVisibility(VISIBLE);
+            acknowledged.set(canvas.selection);
+            send.setText("Wyślij mimo ostrzeżenia");
+            return;
+          }
+          accept.accept(new Selection(new RectF(canvas.selection), remember.isChecked()));
+        });
+    canvas.changed =
+        () -> {
+          acknowledged.setEmpty();
+          warning.setVisibility(GONE);
+          send.setText("Analizuj zaznaczony fragment");
+        };
     addView(send);
     LinearLayout row = new LinearLayout(c);
     Button full = Design.button(c, "Cały obraz", false), back = Design.button(c, "Anuluj", false);
     full.setOnClickListener(
         v -> {
           canvas.selection.set(0, 0, 1, 1);
+          canvas.changed.run();
           canvas.invalidate();
         });
     back.setOnClickListener(v -> cancel.run());
@@ -143,6 +167,7 @@ final class CropPanel extends LinearLayout {
   private static final class CropCanvas extends View {
     final RectF selection;
     private Bitmap bitmap;
+    Runnable changed = () -> {};
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final RectF imageRect = new RectF(), previous = new RectF();
     private float startX, startY;
@@ -227,6 +252,7 @@ final class CropPanel extends LinearLayout {
         return true;
       }
       if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
+        changed.run();
         if (mode == 5) {
           float dx = Math.max(-previous.left, Math.min(1 - previous.right, x - startX));
           float dy = Math.max(-previous.top, Math.min(1 - previous.bottom, y - startY));

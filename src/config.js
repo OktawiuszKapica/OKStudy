@@ -71,6 +71,7 @@ export function normalizeSettings(raw = {}) {
     expressWidth: Math.min(720, Math.max(160, Number(raw.expressWidth) || 460)),
     expressDuration: Math.min(30, Math.max(3, Number(raw.expressDuration) || 8)),
     expressAnswerOnly: raw.expressAnswerOnly === true,
+    cropQualityCheck: raw.cropQualityCheck !== false,
     activityIndicator: ['full', 'minimal', 'off'].includes(raw.activityIndicator)
       ? raw.activityIndicator
       : 'full',

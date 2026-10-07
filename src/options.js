@@ -99,10 +99,17 @@ function populateModels() {
     $('model').add(o);
     $('model').disabled = true;
     $('customModelField').hidden = true;
+    populateFavorites([], '');
     return;
   }
   $('model').disabled = false;
-  for (const m of list) $('model').add(new Option(m.name + (m.detail ? ` · ${m.detail}` : ''), m.id));
+  for (const m of list)
+    $('model').add(
+      new Option(
+        (m.favorite ? '★ ' : '') + m.name + (m.isNew ? ' · Nowy' : '') + (m.detail ? ` · ${m.detail}` : ''),
+        m.id
+      )
+    );
   const known = list.some((m) => m.id === current);
   if (current && !known) $('model').add(new Option(`${current} · poprzedni / własny wybór`, current));
   if (!plan) $('model').add(new Option('Własny / wcześniej wybrany model…', '__custom'));
@@ -110,7 +117,47 @@ function populateModels() {
   if (plan && !current && list.length) settings.chatgptModel = list[0].id;
   $('customModelField').hidden = true;
   $('customModel').value = plan ? '' : current;
+  populateFavorites(list, current);
 }
+function populateFavorites(list, current) {
+  $('favoriteModel').disabled = !current;
+  const saved = list.some((m) => m.id === current && m.favorite);
+  $('favoriteModel').textContent = saved ? '★ Usuń z ulubionych' : '☆ Dodaj do ulubionych';
+  $('favoriteModels').replaceChildren();
+  for (const m of list.filter((m) => m.favorite).slice(0, 2)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'button secondary';
+    b.textContent = `★ ${m.name}`;
+    b.onclick = () => {
+      if (settings.provider === 'openai' && settings.openaiAuth === 'chatgpt') settings.chatgptModel = m.id;
+      else settings.models[settings.provider] = m.id;
+      changed();
+      populateModels();
+    };
+    $('favoriteModels').append(b);
+  }
+}
+$('favoriteModel').onclick = async () => {
+  const provider = settings.provider,
+    auth = settings.openaiAuth;
+  const current =
+    provider === 'openai' && auth === 'chatgpt' ? settings.chatgptModel : settings.models[provider];
+  try {
+    const catalog = await send('models.favorite', {
+      provider,
+      auth,
+      model: current,
+      ...(drafts[provider] ? { key: drafts[provider] } : {}),
+    });
+    if (provider !== settings.provider || auth !== settings.openaiAuth) return;
+    if (provider === 'openai' && auth === 'chatgpt') chatgptModels = catalog.models;
+    else apiCatalogs[provider] = catalog;
+    populateModels();
+  } catch (e) {
+    status(e.message, true);
+  }
+};
 async function refreshModels(force = false) {
   const generation = ++modelGeneration,
     provider = settings.provider,
@@ -291,7 +338,8 @@ const appearanceFields = {
 function syncAppearance() {
   for (const [id, key] of Object.entries(appearanceFields))
     $(id).value = ['opacity', 'speechRate'].includes(id) ? settings[key] * 100 : settings[key];
-  for (const id of ['internet', 'persistentHistory', 'expressAnswerOnly']) $(id).checked = settings[id];
+  for (const id of ['internet', 'persistentHistory', 'expressAnswerOnly', 'cropQualityCheck'])
+    $(id).checked = settings[id];
   populateVoices();
   renderModes();
   renderSpeechSettings();
@@ -414,6 +462,11 @@ $('model').onchange = () => {
   else if (value !== '__custom') settings.models[settings.provider] = value;
   $('customModelField').hidden = value !== '__custom';
   if (value === '__custom') $('customModel').focus();
+  const list =
+    settings.provider === 'openai' && settings.openaiAuth === 'chatgpt'
+      ? chatgptModels
+      : apiCatalogs[settings.provider]?.models || [];
+  populateFavorites(list, value === '__custom' ? '' : value);
   changed();
 };
 $('customModel').oninput = () => {
@@ -438,6 +491,7 @@ for (const [id, key] of [
   ['internet', 'internet'],
   ['persistentHistory', 'persistentHistory'],
   ['expressAnswerOnly', 'expressAnswerOnly'],
+  ['cropQualityCheck', 'cropQualityCheck'],
   ['activityIndicator', 'activityIndicator'],
   ['voiceEngine', 'voiceEngine'],
   ['systemVoice', 'systemVoice'],
@@ -621,6 +675,7 @@ void (async () => {
   $('internet').checked = settings.internet;
   $('persistentHistory').checked = settings.persistentHistory;
   $('expressAnswerOnly').checked = settings.expressAnswerOnly;
+  $('cropQualityCheck').checked = settings.cropQualityCheck;
   populateVoices();
   syncAppearance();
   await refreshProfiles();

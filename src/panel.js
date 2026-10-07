@@ -117,6 +117,22 @@ function renderEntry() {
   if (rendered !== fingerprint) {
     rendered = fingerprint;
     $('conversation').replaceChildren();
+    if (entry.verification) {
+      const original = document.createElement('article');
+      original.className = 'message-assistant';
+      const label = document.createElement('div');
+      label.className = 'message-label';
+      label.textContent = `PIERWSZA ODPOWIEDŹ · ${entry.verification.model}`;
+      const text = document.createElement('div');
+      text.className = 'prose';
+      renderMarkdown(text, entry.verification.text);
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent =
+        'Poniżej niezależna odpowiedź drugiego modelu. Oceń różnice; zgodność nie gwarantuje poprawności.';
+      original.append(label, text, note);
+      $('conversation').append(original);
+    }
     entry.messages.forEach((m, i) => {
       if (i === 0 && entry.source !== 'text') return;
       const article = document.createElement('article');
@@ -124,7 +140,7 @@ function renderEntry() {
       if (m.role === 'assistant') {
         const label = document.createElement('div');
         label.className = 'message-label';
-        label.textContent = 'OKSTUDY';
+        label.textContent = entry.verification ? `SPRAWDZENIE · ${entry.model}` : 'OKSTUDY';
         const prose = document.createElement('div');
         prose.className = 'prose';
         renderMarkdown(prose, m.text);
@@ -194,6 +210,7 @@ async function refresh() {
     else $('partial').replaceChildren();
   }
   $('sendQuestion').disabled = running;
+  $('verifyAnswer').disabled = running;
   $('question').disabled = running;
   document.querySelectorAll('[data-question]').forEach((b) => {
     b.disabled = running;
@@ -242,6 +259,50 @@ $('copyAnswer').onclick = () =>
       status('Przeglądarka nie zezwoliła na kopiowanie. Zaznacz tekst odpowiedzi i skopiuj go ręcznie.', true)
     );
 $('exportAnswer').onclick = () => entry && downloadNote(entry);
+let verifyTarget;
+$('verifyCancel').onclick = () => $('verifyDialog').close();
+$('verifyAnswer').onclick = async () => {
+  if (!entry) return;
+  verifyTarget = entry;
+  $('verifyCustom').value = '';
+  $('verifyModel').replaceChildren();
+  $('verifySubmit').disabled = true;
+  $('verifyDialog').showModal();
+  try {
+    const target = verifyTarget;
+    const catalog = await send('models.list', { provider: target.provider, auth: target.auth });
+    if (target !== verifyTarget || !$('verifyDialog').open) return;
+    for (const m of catalog.models.filter((m) => m.id !== target.model))
+      $('verifyModel').add(new Option(`${m.favorite ? '★ ' : ''}${m.name}${m.isNew ? ' · Nowy' : ''}`, m.id));
+    if (!$('verifyModel').options.length) $('verifyModel').add(new Option('Wpisz identyfikator poniżej', ''));
+    if (target.auth === 'chatgpt' && target.accountId && target.accountId !== catalog.accountId)
+      throw new Error('Konto zostało zmienione. Zaznacz zadanie ponownie.');
+    if (target.credentialScope && target.credentialScope !== catalog.scope)
+      throw new Error('Klucz został zmieniony. Zaznacz zadanie ponownie.');
+    $('verifySubmit').disabled = false;
+  } catch (e) {
+    $('verifyDialog').close();
+    status(e.message, true);
+  }
+};
+$('verifyForm').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!verifyTarget) return;
+  const model = $('verifyCustom').value.trim() || $('verifyModel').value;
+  if (!/^[\w.:/-]{1,120}$/.test(model) || model === verifyTarget.model) {
+    $('verifyCustom').setCustomValidity('Wybierz inny, prawidłowy model.');
+    $('verifyCustom').reportValidity();
+    return;
+  }
+  try {
+    await send('verify', { tabId, id: verifyTarget.id, model });
+    $('verifyDialog').close();
+    await refresh();
+  } catch (error) {
+    status(error.message, true);
+  }
+};
+$('verifyCustom').oninput = () => $('verifyCustom').setCustomValidity('');
 $('speakAnswer').onclick = async () => {
   if (!entry) return;
   try {

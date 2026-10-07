@@ -143,9 +143,11 @@
               <label for="model">Model</label
               ><select id="model"></select>
               <div class="row wrap">
+                <button id="favoriteModel" class="text-button" type="button">☆ Dodaj do ulubionych</button>
                 <button id="refreshModels" class="text-button" type="button">Odśwież modele konta</button
                 ><span class="hint" id="modelCatalogStatus"></span>
               </div>
+              <div class="row wrap" id="favoriteModels" aria-label="Szybki wybór ulubionych modeli"></div>
               <div id="customModelField" hidden>
                 <label for="customModel">Identyfikator własnego modelu</label
                 ><input
@@ -368,6 +370,13 @@
           </div>
         </section>
         <section id="section-shortcuts" class="settings-section" hidden>
+          <label class="switch-row" for="cropQualityCheck"
+            ><span>Ostrzegaj o słabo czytelnym kadrze</span
+            ><input type="checkbox" role="switch" id="cropQualityCheck"
+          /></label>
+          <p class="hint">
+            Lokalne sprawdzenie wybranego fragmentu. Możesz poprawić zaznaczenie albo wysłać mimo ostrzeżenia.
+          </p>
           <div class="section-heading">
             <span class="section-number">03</span>
             <div>

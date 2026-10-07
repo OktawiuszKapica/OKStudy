@@ -39,7 +39,7 @@ final class Prefs {
   }
 
   String longPress() {
-    return store.getString("longPress", "settings");
+    return store.getString("longPress", "menu");
   }
 
   void profile(String name) {

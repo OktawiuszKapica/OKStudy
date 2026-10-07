@@ -1436,9 +1436,23 @@ output {
 }
 .answer-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 5px;
   margin: 15px 0;
+}
+#verifyAnswer {
+  flex-basis: 100%;
+  margin-right: 0;
+}
+#verifyDialog {
+  text-align: left;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+#verifyDialog label {
+  display: block;
+  margin: 12px 0 6px;
 }
 .answer-actions .button {
   margin-right: auto;

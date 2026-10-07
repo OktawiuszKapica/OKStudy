@@ -39,6 +39,8 @@ public final class MainActivity extends Activity {
   private Button[] tabs;
   private ScrollView scroll;
   private LinearLayout accountBox, apiBox;
+  private LinearLayout quickModels;
+  private TextView dashboardModel;
   private AnswerPreview preview;
   private Spinner positionPicker;
   private SeekBar positionX, positionY;
@@ -87,28 +89,19 @@ public final class MainActivity extends Activity {
     logo.addView(new Design.Mark(this), new LinearLayout.LayoutParams(dp(45), dp(35)));
     TextView name = Design.text(this, "  OKStudy", 25, Design.TEXT, true);
     logo.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
-    logo.addView(Design.chip(this, "MOBILE / 02"));
+    logo.addView(Design.chip(this, "MOBILE / 03"));
     page.addView(logo);
     LinearLayout home = Design.column(this),
         aiPage = Design.column(this),
         stylePage = Design.column(this);
     pages = new LinearLayout[] {home, aiPage, stylePage};
     for (LinearLayout section : pages) page.addView(section);
-    Design.art(this, home, R.drawable.focus_hero, 178);
-    TextView eyebrow = Design.text(this, "TWOJA POMOC W NAUCE · MOBILE", 10, Design.LIME, true);
-    eyebrow.setLetterSpacing(.12f);
-    eyebrow.setPadding(0, dp(7), 0, dp(10));
-    home.addView(eyebrow);
-    home.addView(Design.text(this, "Twój mały skrót\ndo zrozumienia.", 29, Design.TEXT, true));
-    TextView intro =
-        Design.text(
-            this,
-            "Uruchom sesję, otwórz zadanie i stuknij w pływający przycisk OKStudy.",
-            14,
-            Design.MUTED,
-            false);
-    intro.setPadding(0, dp(12), 0, dp(12));
-    home.addView(intro);
+    Design.art(this, home, R.drawable.focus_hero, 100);
+    home.addView(Design.text(this, "Zadanie. Odpowiedź. Gotowe.", 23, Design.TEXT, true));
+    dashboardModel = Design.text(this, "", 12, Design.MUTED, false);
+    dashboardModel.setPadding(0, dp(7), 0, dp(8));
+    dashboardModel.setOnClickListener(v -> showTab(1));
+    home.addView(dashboardModel);
     sessionState = Design.text(this, "", 12, Design.MUTED, false);
     home.addView(sessionState);
     start = Design.button(this, "Uruchom pomoc na ekranie", true);
@@ -129,6 +122,31 @@ public final class MainActivity extends Activity {
           startActivityForResult(intent, IMAGE);
         });
     home.addView(pick);
+    HorizontalScrollView profileScroll = new HorizontalScrollView(this);
+    profileScroll.setHorizontalScrollBarEnabled(false);
+    LinearLayout quickProfiles = new LinearLayout(this);
+    profileScroll.addView(quickProfiles);
+    home.addView(profileScroll);
+    String[] quickIds = {"discreet", "readable", "study", "voice"};
+    String[] quickNames = {"Dyskretny", "Czytelny", "Nauka", "Głos"};
+    for (int i = 0; i < quickIds.length; i++) {
+      final String profileId = quickIds[i];
+      Button profile = Design.button(this, quickNames[i], false);
+      profile.setTextSize(12);
+      profile.setOnClickListener(
+          v -> {
+            prefs.profile(profileId);
+            show("Profil: " + profile.getText(), false);
+          });
+      LinearLayout.LayoutParams cell = new LinearLayout.LayoutParams(dp(101), dp(48));
+      cell.setMargins(0, dp(8), dp(6), 0);
+      quickProfiles.addView(profile, cell);
+    }
+    HorizontalScrollView modelScroll = new HorizontalScrollView(this);
+    modelScroll.setHorizontalScrollBarEnabled(false);
+    quickModels = new LinearLayout(this);
+    modelScroll.addView(quickModels);
+    home.addView(modelScroll);
     status =
         Design.text(
             this,
@@ -217,6 +235,19 @@ public final class MainActivity extends Activity {
     catalog = Design.button(this, "Pobierz modele konta", false);
     catalog.setOnClickListener(v -> loadModels());
     connection.addView(catalog);
+    Button favourite = Design.button(this, "★ Dodaj / usuń model z ulubionych", false);
+    favourite.setOnClickListener(
+        v -> {
+          try {
+            saveConnection();
+            ModelLibrary.current(this).toggle(modelField.getText().toString().trim());
+            refreshQuickModels();
+            show("Ulubione modele zaktualizowane.", false);
+          } catch (Exception e) {
+            error(e);
+          }
+        });
+    connection.addView(favourite);
     Button save = Design.button(this, "Zapisz połączenie", true);
     save.setOnClickListener(
         v -> {
@@ -295,9 +326,9 @@ public final class MainActivity extends Activity {
         presentation,
         "Przytrzymanie przycisku OK",
         "longPress",
-        new String[] {"settings", "explain"},
-        new String[] {"Otwórz aplikację", "Wyjaśnij ostatnią odpowiedź"},
-        "settings");
+        new String[] {"menu", "settings", "explain"},
+        new String[] {"Szybkie menu", "Otwórz aplikację", "Wyjaśnij ostatnią odpowiedź"},
+        "menu");
     presentation.addView(
         Design.text(
             this,
@@ -448,17 +479,23 @@ public final class MainActivity extends Activity {
             show("Skopiowano odpowiedź.", false);
           }
         });
-    result.addView(copy);
     Button read = Design.button(this, "Przeczytaj / zatrzymaj", false);
     read.setOnClickListener(
         v -> {
           if (speech.busy()) speech.stop();
           else if (!AppState.answer.isEmpty()) speech.read(AppState.answer, this::error);
         });
-    result.addView(read);
+    Design.row(this, result, copy, read);
     Button explain = Design.button(this, "Wyjaśnij w aplikacji", false);
     explain.setOnClickListener(v -> explainLast());
-    result.addView(explain);
+    Button verify = Design.button(this, "Sprawdź innym modelem", false);
+    verify.setOnClickListener(v -> verifyLast());
+    Design.row(this, result, explain, verify);
+    Button repeat = Design.button(this, "Pokaż ponownie", false);
+    repeat.setOnClickListener(v -> repeatAnswer(AppState.answer));
+    Button history = Design.button(this, "Historia i ulubione", false);
+    history.setOnClickListener(v -> showHistory());
+    Design.row(this, result, repeat, history);
     Button clear = Design.button(this, "Wyczyść odpowiedź", false);
     clear.setOnClickListener(
         v -> {
@@ -470,6 +507,80 @@ public final class MainActivity extends Activity {
           speech.stop();
         });
     result.addView(clear);
+    LinearLayout historySettings =
+        Design.card(
+            this,
+            stylePage,
+            "Historia i czytelność",
+            "Historia zawiera tekst odpowiedzi. Obrazy pozostają tylko w pamięci zadania.");
+    CheckBox persistence = new CheckBox(this);
+    persistence.setText("Zachowuj historię po zamknięciu aplikacji");
+    persistence.setTextColor(Design.TEXT);
+    persistence.setChecked(prefs.store.getBoolean("persistentHistory", false));
+    persistence.setOnClickListener(
+        v -> {
+          try {
+            AnswerHistory.persistent(this, persistence.isChecked());
+          } catch (Exception e) {
+            persistence.setChecked(!persistence.isChecked());
+            error(e);
+          }
+        });
+    historySettings.addView(persistence);
+    CheckBox quality = new CheckBox(this);
+    quality.setText("Oceniaj czytelność w edytorze kadru");
+    quality.setTextColor(Design.TEXT);
+    quality.setChecked(prefs.store.getBoolean("qualityCheck", true));
+    quality.setOnCheckedChangeListener(
+        (v, checked) -> prefs.store.edit().putBoolean("qualityCheck", checked).apply());
+    historySettings.addView(quality);
+    Button clearHistory = Design.button(this, "Usuń historię odpowiedzi", false);
+    clearHistory.setOnClickListener(
+        v ->
+            new AlertDialog.Builder(this)
+                .setTitle("Usunąć historię?")
+                .setMessage("Usunięte zostaną także przypięte odpowiedzi.")
+                .setNegativeButton("Zachowaj", null)
+                .setPositiveButton(
+                    "Usuń",
+                    (d, which) -> {
+                      try {
+                        AnswerHistory.remove(this, null);
+                        show("Historia usunięta.", false);
+                      } catch (Exception e) {
+                        error(e);
+                      }
+                    })
+                .show());
+    historySettings.addView(clearHistory);
+    Button tile = Design.button(this, "Dodaj kafelek OKStudy", false);
+    tile.setOnClickListener(
+        v -> {
+          if (Build.VERSION.SDK_INT >= 33)
+            getSystemService(android.app.StatusBarManager.class)
+                .requestAddTileService(
+                    new ComponentName(this, SessionTile.class),
+                    "OKStudy",
+                    android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_status),
+                    getMainExecutor(),
+                    resultCode ->
+                        show(
+                            resultCode
+                                        == android.app.StatusBarManager
+                                            .TILE_ADD_REQUEST_RESULT_TILE_ADDED
+                                    || resultCode
+                                        == android.app.StatusBarManager
+                                            .TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED
+                                ? "Kafelek OKStudy znajdziesz w szybkich ustawieniach Androida."
+                                : "Kafelek nie został dodany. Możesz dodać go w edycji szybkich"
+                                    + " ustawień.",
+                            false));
+          else
+            show(
+                "Rozwiń szybkie ustawienia Androida, wybierz edycję kafelków i dodaj OKStudy.",
+                false);
+        });
+    historySettings.addView(tile);
     TextView foot =
         Design.text(
             this,
@@ -497,6 +608,7 @@ public final class MainActivity extends Activity {
     showTab(selectedTab);
     displayedAnswer = "";
     refreshState();
+    refreshQuickModels();
   }
 
   private void showTab(int tab) {
@@ -508,6 +620,7 @@ public final class MainActivity extends Activity {
       tabs[i].setSelected(i == tab);
     }
     scroll.scrollTo(0, 0);
+    if (tab == 1 && catalog != null && !pendingStart) autoRefreshModels();
   }
 
   private void rebuildPreservingDrafts() {
@@ -873,6 +986,10 @@ public final class MainActivity extends Activity {
   }
 
   private void loadModels() {
+    loadModels(true);
+  }
+
+  private void loadModels(boolean showPicker) {
     String provider = prefs.provider();
     String account = ChatGpt.selected(this);
     try {
@@ -880,6 +997,8 @@ public final class MainActivity extends Activity {
           key = provider.equals("chatgpt") ? "" : draft.isEmpty() ? secrets.get(provider) : draft;
       if (provider.equals("chatgpt")) ChatGpt.require(this, account);
       else ApiClient.validate(provider, key, "catalog");
+      ModelLibrary library =
+          new ModelLibrary(this, provider, provider.equals("chatgpt") ? account : key);
       if (catalogRequest != null) catalogRequest.cancel();
       ApiClient.Cancel token = new ApiClient.Cancel();
       catalogRequest = token;
@@ -892,6 +1011,8 @@ public final class MainActivity extends Activity {
                   provider.equals("chatgpt")
                       ? ChatGpt.models(this, account, token)
                       : new ApiClient().models(provider, key, token);
+              token.check();
+              library.save(models);
               runOnUiThread(
                   () -> {
                     if (!alive
@@ -900,15 +1021,16 @@ public final class MainActivity extends Activity {
                         || (provider.equals("chatgpt") && !account.equals(ChatGpt.selected(this))))
                       return;
                     catalog.setEnabled(true);
+                    refreshQuickModels();
                     show("Pobrano " + models.size() + " modeli dla tego połączenia.", false);
+                    if (!showPicker) return;
                     if (models.isEmpty()) {
                       show("Konto nie zwróciło modeli. Możesz wpisać identyfikator ręcznie.", true);
                       return;
                     }
+                    List<ApiClient.Model> sortedModels = library.models();
                     String[] labels =
-                        models.stream()
-                            .map(m -> m.name().equals(m.id()) ? m.name() : m.name() + "\n" + m.id())
-                            .toArray(String[]::new);
+                        sortedModels.stream().map(library::label).toArray(String[]::new);
                     new AlertDialog.Builder(this)
                         .setTitle(
                             provider.equals("chatgpt")
@@ -917,7 +1039,7 @@ public final class MainActivity extends Activity {
                         .setItems(
                             labels,
                             (d, i) -> {
-                              modelField.setText(models.get(i).id());
+                              modelField.setText(sortedModels.get(i).id());
                               show("Wybrano model. Zapisz połączenie.", false);
                             })
                         .setNegativeButton("Zamknij", null)
@@ -980,6 +1102,277 @@ public final class MainActivity extends Activity {
                       dialog.dismiss();
                     }));
     dialog.show();
+  }
+
+  private void autoRefreshModels() {
+    if (!catalog.isEnabled()) return;
+    try {
+      if (prefs.provider().equals("chatgpt")) ChatGpt.require(this, ChatGpt.selected(this));
+      else if (!secrets.has(prefs.provider())) return;
+      if (ModelLibrary.current(this).expired()) loadModels(false);
+    } catch (Exception ignored) {
+      /* An unconfigured connection is handled by its visible controls. */
+    }
+  }
+
+  private void refreshQuickModels() {
+    if (quickModels == null) return;
+    quickModels.removeAllViews();
+    try {
+      ModelLibrary library = ModelLibrary.current(this);
+      int count = 0;
+      for (ApiClient.Model model : library.models()) {
+        if (!library.favourites().contains(model.id())) continue;
+        Button b = Design.button(this, "★ " + model.name(), model.id().equals(prefs.model()));
+        b.setTextSize(12);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(44));
+        lp.setMargins(0, dp(8), dp(8), 0);
+        quickModels.addView(b, lp);
+        b.setOnClickListener(
+            v -> {
+              cancelRequests();
+              prefs.store.edit().putString(prefs.modelKey(), model.id()).apply();
+              modelField.setText(model.id());
+              refreshQuickModels();
+              refreshState();
+              show("Wybrano " + model.name() + ".", false);
+            });
+        if (++count == 2) break;
+      }
+      if (count == 0) {
+        TextView hint =
+            Design.text(this, "★ Dodaj ulubione modele w Połączeniach", 12, Design.MUTED, false);
+        hint.setPadding(0, dp(8), 0, dp(8));
+        hint.setOnClickListener(v -> showTab(1));
+        quickModels.addView(hint);
+      }
+    } catch (Exception e) {
+      error(e);
+    }
+  }
+
+  private void repeatAnswer(String text) {
+    if (text == null || text.trim().isEmpty()) {
+      show("Najpierw uzyskaj odpowiedź.", false);
+      return;
+    }
+    if (!text.equals(AppState.answer)) AppState.clearTask();
+    AppState.answer = text;
+    refreshState();
+    if (AppState.active)
+      startService(
+          new Intent(this, CaptureService.class)
+              .setAction(CaptureService.REPEAT)
+              .putExtra("text", text));
+    show("Powtórzono zapisaną odpowiedź bez nowego zapytania.", false);
+  }
+
+  private void showHistory() {
+    LinearLayout box = Design.column(this);
+    box.setPadding(dp(18), dp(8), dp(18), dp(12));
+    EditText search = edit(box, "Szukaj odpowiedzi lub modelu", false);
+    ListView list = new ListView(this);
+    box.addView(list, new LinearLayout.LayoutParams(-1, dp(330)));
+    final List<AnswerHistory.Entry> rows = new ArrayList<>();
+    Runnable update =
+        () -> {
+          try {
+            rows.clear();
+            rows.addAll(AnswerHistory.list(this, search.getText().toString()));
+            String[] labels =
+                rows.stream()
+                    .map(
+                        e ->
+                            (e.pinned() ? "★ " : "")
+                                + e.text().substring(0, Math.min(120, e.text().length()))
+                                + "\n"
+                                + e.model())
+                    .toArray(String[]::new);
+            list.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, labels));
+          } catch (Exception e) {
+            error(e);
+          }
+        };
+    search.addTextChangedListener(
+        new android.text.TextWatcher() {
+          public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+          public void onTextChanged(CharSequence s, int start, int before, int count) {
+            update.run();
+          }
+
+          public void afterTextChanged(android.text.Editable e) {}
+        });
+    AlertDialog history =
+        new AlertDialog.Builder(this)
+            .setTitle("Historia odpowiedzi")
+            .setView(box)
+            .setNegativeButton("Zamknij", null)
+            .create();
+    list.setOnItemClickListener(
+        (p, v, index, id) -> {
+          AnswerHistory.Entry entry = rows.get(index);
+          TextView value = Design.text(this, entry.text(), 16, Design.TEXT, false);
+          value.setTextIsSelectable(true);
+          value.setPadding(dp(20), dp(12), dp(20), dp(12));
+          ScrollView text = new ScrollView(this);
+          text.addView(value);
+          new AlertDialog.Builder(this)
+              .setTitle(entry.model())
+              .setView(text)
+              .setPositiveButton(
+                  "Pokaż ponownie",
+                  (d, which) -> {
+                    repeatAnswer(entry.text());
+                    history.dismiss();
+                  })
+              .setNeutralButton(
+                  entry.pinned() ? "Odepnij" : "Przypnij",
+                  (d, which) -> {
+                    try {
+                      AnswerHistory.pin(this, entry.id());
+                      update.run();
+                    } catch (Exception e) {
+                      error(e);
+                    }
+                  })
+              .setNegativeButton(
+                  "Usuń",
+                  (d, which) -> {
+                    try {
+                      AnswerHistory.remove(this, entry.id());
+                      update.run();
+                    } catch (Exception e) {
+                      error(e);
+                    }
+                  })
+              .show();
+        });
+    update.run();
+    history.show();
+  }
+
+  private void verifyLast() {
+    AppState.LastTask task = AppState.lastTask();
+    if (task == null || AppState.answer.isEmpty()) {
+      show("Kadr wygasł. Wykonaj analizę, zanim sprawdzisz ją innym modelem.", true);
+      return;
+    }
+    try {
+      ModelLibrary library =
+          new ModelLibrary(
+              this,
+              task.connection().provider,
+              task.connection().provider.equals("chatgpt")
+                  ? task.connection().account
+                  : task.connection().key);
+      List<ApiClient.Model> models = library.models();
+      models.removeIf(m -> m.id().equals(task.connection().model));
+      LinearLayout content = Design.column(this);
+      content.setPadding(dp(20), dp(8), dp(20), dp(12));
+      content.addView(
+          Design.text(
+              this,
+              "Ten sam kadr zostanie wysłany niezależnie do drugiego modelu. To dodatkowe użycie"
+                  + " planu lub płatnego API. Pierwszy wynik pozostanie zachowany.",
+              14,
+              Design.MUTED,
+              false));
+      EditText input = edit(content, "Identyfikator drugiego modelu", false);
+      if (!models.isEmpty()) {
+        Spinner picker =
+            spinner(content, models.stream().map(library::label).toArray(String[]::new));
+        input.setText(models.get(0).id());
+        picker.setOnItemSelectedListener(
+            new AdapterView.OnItemSelectedListener() {
+              public void onNothingSelected(AdapterView<?> p) {}
+
+              public void onItemSelected(AdapterView<?> p, View v, int i, long id) {
+                input.setText(models.get(i).id());
+              }
+            });
+      }
+      AlertDialog dialog =
+          new AlertDialog.Builder(this)
+              .setTitle("Sprawdź innym modelem")
+              .setView(content)
+              .setPositiveButton("Sprawdź", null)
+              .setNegativeButton("Anuluj", null)
+              .create();
+      dialog.setOnShowListener(
+          d ->
+              dialog
+                  .getButton(AlertDialog.BUTTON_POSITIVE)
+                  .setOnClickListener(
+                      v -> {
+                        try {
+                          AiConnection second =
+                              task.connection().withModel(input.getText().toString().trim());
+                          final String original = AppState.answer;
+                          if (request != null) request.cancel();
+                          ApiClient.Cancel token = new ApiClient.Cancel();
+                          request = token;
+                          dialog.dismiss();
+                          show("Sprawdzam niezależnie drugim modelem…", false);
+                          analyzeImage.setVisibility(View.VISIBLE);
+                          analyzeImage.setText("Przerwij analizę");
+                          network.execute(
+                              () -> {
+                                try {
+                                  String result = second.analyze(task.image(), prefs.only(), token);
+                                  runOnUiThread(
+                                      () -> {
+                                        if (!alive || token.cancelled || request != token) return;
+                                        request = null;
+                                        analyzeImage.setVisibility(View.GONE);
+                                        LinearLayout pair = Design.column(this);
+                                        pair.setPadding(dp(20), dp(12), dp(20), dp(16));
+                                        TextView both =
+                                            Design.text(
+                                                this,
+                                                task.connection().model
+                                                    + "\n"
+                                                    + original
+                                                    + "\n\n"
+                                                    + second.model
+                                                    + "\n"
+                                                    + result,
+                                                16,
+                                                Design.TEXT,
+                                                false);
+                                        both.setTextIsSelectable(true);
+                                        pair.addView(both);
+                                        ScrollView results = new ScrollView(this);
+                                        results.addView(pair);
+                                        new AlertDialog.Builder(this)
+                                            .setTitle("Dwie niezależne odpowiedzi")
+                                            .setView(results)
+                                            .setPositiveButton("Zamknij", null)
+                                            .show();
+                                        show(
+                                            "Sprawdzenie gotowe. Różnica odpowiedzi wymaga oceny;"
+                                                + " zgodność nie gwarantuje poprawności.",
+                                            false);
+                                      });
+                                } catch (Exception e) {
+                                  runOnUiThread(
+                                      () -> {
+                                        if (alive && !token.cancelled && request == token) {
+                                          request = null;
+                                          analyzeImage.setVisibility(View.GONE);
+                                          error(e);
+                                        }
+                                      });
+                                }
+                              });
+                        } catch (Exception e) {
+                          input.setError(e.getMessage());
+                        }
+                      }));
+      dialog.show();
+    } catch (Exception e) {
+      error(e);
+    }
   }
 
   private void begin() {
@@ -1075,6 +1468,10 @@ public final class MainActivity extends Activity {
 
   @SuppressWarnings("deprecation")
   private void accept(Intent intent) {
+    if ("pl.okstudy.TILE_START".equals(intent.getAction())) {
+      intent.setAction(null);
+      if (!AppState.active) handler.post(this::begin);
+    }
     if (Intent.ACTION_SEND.equals(intent.getAction())
         && intent.getType() != null
         && intent.getType().startsWith("image/")) {
@@ -1149,12 +1546,22 @@ public final class MainActivity extends Activity {
                   AppState.answer = value;
                   AppState.error = "";
                   AppState.remember(captured, connection);
+                  boolean savedHistory = true;
+                  try {
+                    AnswerHistory.add(this, value, connection);
+                  } catch (Exception e) {
+                    savedHistory = false;
+                  }
                   image = null;
                   analyzeImage.setText("Analizuj wybrany zrzut");
                   analyzeImage.setVisibility(View.GONE);
                   refreshState();
                   showTab(0);
-                  show("Odpowiedź jest gotowa poniżej.", false);
+                  show(
+                      savedHistory
+                          ? "Odpowiedź jest gotowa poniżej."
+                          : "Odpowiedź gotowa, lecz nie zapisano historii.",
+                      !savedHistory);
                   if (!prefs.voice().equals("off")) speech.read(value, this::error);
                 });
           } catch (Exception e) {
@@ -1228,6 +1635,11 @@ public final class MainActivity extends Activity {
       positionYValue.setText(Math.round(prefs.answerY() * 100) + "%");
     }
     start.setText(AppState.active ? "Zakończ sesję na ekranie" : "Uruchom pomoc na ekranie");
+    if (dashboardModel != null)
+      dashboardModel.setText(
+          PROVIDER_NAMES[Math.max(0, Arrays.asList(PROVIDERS).indexOf(prefs.provider()))]
+              + " · "
+              + (prefs.model().isEmpty() ? "Wybierz model →" : prefs.model()));
     sessionState.setText(
         AppState.active
             ? "● Sesja aktywna · przycisk działa nad innymi aplikacjami"
@@ -1276,6 +1688,8 @@ public final class MainActivity extends Activity {
   protected void onResume() {
     super.onResume();
     refreshAccount();
+    refreshQuickModels();
+    autoRefreshModels();
     handler.post(refresh);
   }
 

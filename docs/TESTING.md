@@ -1,5 +1,15 @@
 # Weryfikacja OKStudy 2
 
+## Wydanie 2.2.0 / Windows 0.1.0 — 7 października 2026
+
+**47 testów Node przeszło bez pominięć.** Obejmują również ulubione modele, wygasanie oznaczenia Nowy, rozdzielenie katalogów według połączenia, lokalną kontrolę czytelności oraz odbiór tekstu z końcowych zdarzeń strumienia bez duplikacji i ujawniania reasoning. Wymagane pozostaje potwierdzenie ukończenia; późniejszy błąd odrzuca wynik.
+
+Przeszło **25 kontroli rozszerzenia w Chromium** i **38 kontroli prezentacji, ustawień i głosu** na syntetycznych odpowiedziach. Sprawdzono niezależne zapytanie drugim modelem, zachowanie pierwszego wyniku, porównanie w panelu oraz oznaczenie i szybki wybór ulubionych. Dopasowano przyciski panelu do 320 px. Dwa wcześniejsze przebiegi prezentacji przekroczyły limit oczekiwania przy równoległych kompilacjach; pełny powtórzony przebieg zakończył się powodzeniem.
+
+Windows ma osobne **9 kontroli syntetycznych**: katalog i polski tekst pomiędzy C# a dołączonym Node, anulowanie, bezpieczny komunikat błędu, odrzucanie zdalnego adresu obrazu, DPAPI i lokalna heurystyka kadru, rozpakowanie instalatora oraz zgodność plików z hashami. Nie korzystają z kont użytkownika i blokują rzeczywistą sieć. Podgląd nowego okna oceniono wizualnie. Prawdziwe przechwytywanie ekranów, skróty, nakładki nad programami i logowanie wymagają [prób Windows](WINDOWS-TESTS.md). Instalator aplikacji Windows i instalator modułu rozszerzenia nie mają podpisu wydawcy.
+
+Nie powtarzano w tym wydaniu testu `test:native` z modułem zarejestrowanym w systemie; moduł i jego protokół sprawdzono w izolowanych testach Node i instalatora. Nie wykonano płatnych zapytań ani rzeczywistego logowania. Android 0.3.0 został wyłącznie skompilowany, sprawdzony Lint i podpisany — bez testów lub uruchomienia Androida, zgodnie z dyspozycją użytkownika. [Kontrole APK](../mobile/TESTING.md) i [próby telefonu](../mobile/PHONE-TESTS.md).
+
 ## Uruchomienie
 
 ```sh
@@ -12,6 +22,8 @@ npm run build:installer
 npm test
 npm run package
 ```
+
+Osobny Windows: `npm run build:desktop`, następnie `npm run test:desktop`. Polecenia tej sekcji dotyczą PC; nie uruchamiają emulatora ani aplikacji Android.
 
 Testy Node sprawdzają migrację danych (także błąd zapisu), kolejność usuwania synchronizowanych kluczy, równoczesne zapisy historii, anulowanie, skalowanie kadru, SSE z dzielonym UTF-8, końcowe błędy strumienia, adaptery czterech dostawców oraz obsługę limitów.
 

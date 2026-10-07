@@ -17,11 +17,13 @@ Rozszerzenie Chrome do nauki z Gemini, Claude, OpenAI lub Grok. Własna identyfi
 - Komunikat analizy: pełny, małe animowane kropki albo wyłączony.
 - Profile Nauka, Dyskretna odpowiedź, Słuchanie oraz do 8 własnych profili. Szybkie ustawienia pod ikoną rozszerzenia.
 - Lista modeli pobierana z konta dostawcy, z ręcznym odświeżaniem i zachowaniem wcześniej wybranego modelu.
+- Ulubione modele z dwoma szybkimi wyborami i oznaczeniem nowych pozycji z katalogu. Lokalne ostrzeżenia o czytelności zaznaczenia.
+- Ręczne sprawdzenie drugim modelem: niezależne zapytanie i obie odpowiedzi w panelu, z uprzedzeniem o dodatkowym użyciu.
 - Klucze API czterech dostawców albo dostępny plan ChatGPT przez opcjonalny moduł na Windows.
 
 ## Instalacja i aktualizacja
 
-1. Rozpakuj paczkę `OKStudy-2.1.0.zip`. Folder **OKStudy** zawiera `manifest.json`.
+1. Rozpakuj paczkę `OKStudy-2.2.0.zip`. Folder **OKStudy** zawiera `manifest.json`.
 2. Otwórz `chrome://extensions`, włącz **Tryb dewelopera** i wybierz **Załaduj rozpakowane**.
 3. Wskaż folder OKStudy i przypnij ikonę do paska przeglądarki.
 4. W ustawieniach wybierz dostawcę i sposób połączenia, a następnie **Zapisz ustawienia**.
@@ -133,9 +135,13 @@ Testy korzystają z syntetycznych danych i kontrolowanych odpowiedzi dostawców.
 
 Dokumentacja integracji ChatGPT: [logowanie](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [konta i sesje](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions), [modele i zapytania](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference). Implementację przygotowano według dokumentacji dostępnej 6 października 2026.
 
+## Aplikacja Windows poza przeglądarką
+
+Osobny `OKStudy-Windows-0.1.0-Setup.exe` lub ZIP portable umożliwia analizę w PDF-ie, Wordzie i innych widocznych programach. **Ctrl + Alt + O** zaznacza fragment, **Ctrl + Alt + R** powtarza wynik, **Ctrl + Alt + K** przerywa. Aplikacja ma ikonę przy zegarze, opcjonalną szyfrowaną historię, profile, ulubione modele i sprawdzenie drugim modelem. Korzysta z dotychczasowego magazynu kont ChatGPT lub własnego klucza API. [Instrukcja i ograniczenia](desktop/README.md), [scenariusze sprawdzenia](docs/WINDOWS-TESTS.md).
+
 ## Wersja mobilna
 
-Paczka 2.1.0 zawiera rozszerzenie komputerowe i moduł Windows. Oddzielne **OKStudy Android 0.2.2** ma pływający przycisk, natywne logowanie ChatGPT, kadrowanie, profile, podgląd położenia wyniku i nowy wygląd z grafikami ImageGen. W 0.2.2 poprawiono odbiór fragmentów odpowiedzi i dodano raport diagnostyczny modeli oraz analizy w Połączeniach. Na prośbę użytkownika nie uruchamiano emulatora ani aplikacji — [testy na telefonie](mobile/PHONE-TESTS.md) wykona osobiście. [Instrukcja](mobile/README.md), [stan weryfikacji](mobile/TESTING.md). Źródła iPhone/iPad pozostają w wersji 0.1.0 z kluczami API i wymagają kompilacji oraz testów na Macu.
+Paczka 2.2.0 zawiera rozszerzenie i jego moduł połączenia ChatGPT. Oddzielny **Android 0.3.0** dodaje do dotychczasowej aplikacji małe menu przy OK, kafelek szybkich ustawień, historię z wyszukiwaniem i przypinaniem, ulubione modele, lokalne sprawdzenie kadru i porównanie modeli. Pulpit jest krótszy i zachowuje grafiki ImageGen. Użytkownik potwierdził działanie analizy w 0.2.2. Nowej wersji 0.3.0 zgodnie z prośbą nie uruchamiano w emulatorze ani na telefonie — [testy na telefonie](mobile/PHONE-TESTS.md) wykona osobiście. [Instrukcja](mobile/README.md), [stan weryfikacji](mobile/TESTING.md). Źródła iPhone/iPad pozostają w wersji 0.1.0 i wymagają Maca/Xcode.
 
 ## Autor
 

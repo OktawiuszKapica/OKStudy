@@ -32,4 +32,19 @@ final class AiConnection {
     }
     return new ApiClient().analyze(provider, key, model, image, only, cancel);
   }
+
+  private AiConnection(AiConnection source, String selectedModel) throws Exception {
+    if (!ApiClient.validModel(selectedModel) || selectedModel.equals(source.model))
+      throw new Exception("Wybierz inny model do sprawdzenia.");
+    context = source.context;
+    provider = source.provider;
+    model = selectedModel;
+    key = source.key;
+    account = source.account;
+    epoch = source.epoch;
+  }
+
+  AiConnection withModel(String selectedModel) throws Exception {
+    return new AiConnection(this, selectedModel);
+  }
 }

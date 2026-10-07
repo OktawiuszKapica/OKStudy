@@ -190,7 +190,14 @@ try {
   const speech = () =>
     worker.evaluate(async () => (await chrome.storage.session.get('okstudy.speech'))['okstudy.speech']);
   const snap = () => send('snapshot', { tabId });
-  const job = (expected) => until(snap, (value) => value.job.status === expected, `job ${expected}`);
+  const job = async (expected) => {
+    try {
+      return await until(snap, (value) => value.job.status === expected, `job ${expected}`);
+    } catch (e) {
+      console.error('Synthetic job state:', JSON.stringify((await snap()).job));
+      throw e;
+    }
+  };
   const launch = async () => {
     await page.bringToFront();
     await page.locator('#task').evaluate((element) => {
@@ -513,7 +520,21 @@ try {
     'live new model'
   );
   check('a renamed Google model appears from the live catalog without an extension update', true);
+  check(
+    'a new model gets a visible marker',
+    (await options.locator('#model option[value="new-google-family-test"]').textContent()).includes('Nowy')
+  );
   await options.locator('#model').selectOption('new-google-family-test');
+  await options.locator('#favoriteModel').click();
+  await until(
+    () => options.locator('#favoriteModels button').count(),
+    (count) => count === 1,
+    'favorite model button'
+  );
+  check(
+    'favorites have a quick switch and sort first',
+    (await options.locator('#model option').first().getAttribute('value')) === 'new-google-family-test'
+  );
   await options.locator('#save').click();
   await options.getByText('Ustawienia zostały zapisane.', { exact: true }).waitFor();
   await fixture({ catalog: [] });

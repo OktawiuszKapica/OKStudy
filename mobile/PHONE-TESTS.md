@@ -1,6 +1,19 @@
-# OKStudy Android 0.2.2 — sprawdzenie na telefonie
+# OKStudy Android 0.3.0 — sprawdzenie na telefonie
 
-Zakończ aktywną sesję i zainstaluj `OKStudy-Mobile-0.2.2.apk` jako aktualizację 0.1.0/0.2.x. Zachowano identyfikator aplikacji i lokalny klucz podpisu, więc nie trzeba odinstalowywać poprzedniej wersji ani usuwać konta i ustawień. Dla 0.2.2 nie uruchamiano aplikacji ani testów; kontrole działania wykonuje użytkownik.
+Zakończ aktywną sesję i zainstaluj `OKStudy-Mobile-0.3.0.apk` jako aktualizację. Zachowano identyfikator i podpis — nie odinstalowuj poprzedniej wersji. Zgodnie z dyspozycją nie uruchamiano Androida, emulatora ani testów wykonujących kod aplikacji. Wykonano kompilację, Lint i kontrolę APK. Użytkownik potwierdził działanie analizy w 0.2.2; nowe funkcje sprawdza poniżej.
+
+## Najpierw nowe funkcje 0.3.0
+
+1. Na Start sprawdź nazwę połączenia/modelu, profile i ostatnią odpowiedź. Bardzo delikatny profil nadal powinien pozostawiać tylko wynik nad zadaniem.
+2. Wygląd → Przytrzymanie OK → Małe menu. Uruchom sesję, przytrzymaj OK i sprawdź analizę, powtórkę, wyjaśnienie, zmianę profilu oraz automatyczne zniknięcie po 5 s. Menu nie może trafić na zrzut. Zmień orientację z otwartym menu — ma zniknąć.
+3. Wygląd → Dodaj kafelek OKStudy. W szybkich ustawieniach rozpocznij sesję z zatwierdzeniem systemowym, potem ją zakończ. Sprawdź również tapnięcie na zablokowanym telefonie i odmowę dodania kafelka.
+4. Po kilku analizach: Start → Historia. Szukaj po treści/modelu, przypnij wynik, Pokaż ponownie i usuń. Powtórka nie wysyła nowego zapytania. Dawna odpowiedź z historii nie może używać obecnego kadru do wyjaśnienia.
+5. Bez trwałej historii zakończ proces aplikacji — tekst historii ma zniknąć. Włącz zapis w Wyglądzie, uzyskaj odpowiedź i zamknij proces: historia ma pozostać. Wyłącz zapis i ponownie zamknij proces: dyskowa historia nie ma wrócić.
+6. Połączenia: pobierz modele, oznacz dwa gwiazdką i przełącz nimi na Start. Zmiana konta/klucza nie może pokazać ulubionych poprzedniego połączenia. Pierwsze pobranie nie oznacza wszystkich modeli jako Nowy. Po ręcznym odświeżeniu zapisany model nie może zmienić się sam.
+7. Sprawdź mały i pusty/rozmyty kadr: popraw ramkę lub Wyślij mimo ostrzeżenia. W trybie zapisanego/całego kadru słaby obraz powinien otworzyć edytor. Po wyłączeniu kontroli kadru ostrzeżeń nie ma.
+8. Po świeżej analizie: Sprawdź modelem, wybierz inny. To dodatkowe użycie planu/API. Obie odpowiedzi mają być widoczne w aplikacji, oryginalny tekst pozostaje zachowany, brak nowej nakładki nad zadaniem. Przerwij sprawdzanie i upewnij się, że nie pojawia się spóźniony wynik. Po 5 min lub zmianie konta potrzeba nowego kadru.
+
+Dalsze scenariusze obejmują funkcje z wcześniejszych wydań.
 
 ## Najpierw po aktualizacji z 0.2.1
 

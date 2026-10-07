@@ -912,11 +912,38 @@ async function readResponses(response, onDelta = () => {
 }) {
   if (!response.ok) throw apiError(response.status, await response.text());
   let text = "", completed = false, sources = [];
+  const parts = /* @__PURE__ */ new Map(), blocked = /* @__PURE__ */ new Set();
+  const visible = (item) => (!item?.type || item.type === "message") && item?.channel !== "analysis" && (!item?.role || item.role === "assistant");
+  const collect = (index, content, value, append = false) => {
+    if (blocked.has(index) || typeof value !== "string") return;
+    const key = `${index}:${content}`;
+    parts.set(key, append ? (parts.get(key) || "") + value : value);
+    text = [...parts.entries()].sort((a, b2) => {
+      const x2 = a[0].split(":").map(Number), y2 = b2[0].split(":").map(Number);
+      return x2[0] - y2[0] || x2[1] - y2[1];
+    }).map((x2) => x2[1]).join("\n");
+    if (text.length > 15e4) throw new Error("Odpowied\u017A jest zbyt d\u0142uga. Zaw\u0119\u017A zadanie.");
+    onDelta(text);
+  };
   for await (const e of readSSE(response.body)) {
-    if (e.type === "response.output_text.delta") {
-      text += e.delta;
-      onDelta(text);
+    const index = e.output_index ?? 0, content = e.content_index ?? 0;
+    if (e.type === "response.output_item.added" || e.type === "response.output_item.done") {
+      if (!visible(e.item)) {
+        blocked.add(index);
+        for (const key of parts.keys()) if (key.startsWith(`${index}:`)) parts.delete(key);
+      } else if (e.type === "response.output_item.done") {
+        for (const [i, part] of (e.item?.content || []).entries())
+          if (part.type === "output_text") collect(index, i, part.text);
+      }
     }
+    if (e.type === "response.output_text.delta") {
+      if (e.channel !== "analysis") collect(index, content, e.delta, true);
+    }
+    if (e.type === "response.output_text.done" && e.channel !== "analysis") collect(index, content, e.text);
+    if (e.type === "response.content_part.done" && e.channel !== "analysis" && e.part?.type === "output_text")
+      collect(index, content, e.part.text);
+    if (e.type === "response.refusal.done" || e.type === "response.refusal.delta")
+      throw new Error("Model nie mo\u017Ce odpowiedzie\u0107 na to zadanie.");
     if (e.type === "response.failed" || e.type === "error")
       throw apiError(400, JSON.stringify(e.error || e.response?.error || e));
     if (e.type === "response.incomplete")
@@ -924,11 +951,21 @@ async function readResponses(response, onDelta = () => {
         "Odpowied\u017A zosta\u0142a przerwana przez dostawc\u0119. Spr\xF3buj prostszego pytania lub innego modelu."
       );
     if (e.type === "response.completed") {
+      if (e.response?.error) throw apiError(400, JSON.stringify(e.response.error));
+      if (e.response?.status && e.response.status !== "completed")
+        throw new Error("Model nie uko\u0144czy\u0142 odpowiedzi.");
       completed = true;
-      const content = (e.response?.output || []).flatMap((o) => o.content || []);
-      const fullText = content.filter((c) => c.type === "output_text").map((c) => c.text).join("\n");
+      const content2 = (e.response?.output || []).filter(visible).flatMap((o) => o.content || []);
+      if (content2.some((c) => c.type === "refusal"))
+        throw new Error("Model nie mo\u017Ce odpowiedzie\u0107 na to zadanie.");
+      const fullText = content2.filter((c) => c.type === "output_text").map((c) => c.text).join("\n");
       if (fullText) text = fullText;
-      sources = content.flatMap((c) => c.annotations || []).filter((a) => a.type === "url_citation").map((a) => ({ url: a.url, title: a.title || a.url }));
+      else
+        text = [...parts.entries()].filter(([key]) => !blocked.has(Number(key.split(":")[0]))).sort((a, b2) => {
+          const x2 = a[0].split(":").map(Number), y2 = b2[0].split(":").map(Number);
+          return x2[0] - y2[0] || x2[1] - y2[1];
+        }).map((x2) => x2[1]).join("\n");
+      sources = content2.flatMap((c) => c.annotations || []).filter((a) => a.type === "url_citation").map((a) => ({ url: a.url, title: a.title || a.url }));
     }
   }
   if (!completed)

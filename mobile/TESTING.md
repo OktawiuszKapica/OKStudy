@@ -1,5 +1,13 @@
 # Weryfikacja OKStudy Mobile
 
+## Android 0.3.0 — przygotowanie, bez uruchomienia aplikacji
+
+Na prośbę użytkownika nie uruchamiano żadnych emulatorów, telefonów ani testów wykonujących kod Androida. Przeprowadzono kompilację release i Android Lint, sprawdzenie metadanych oraz podpis APK. `assembleRelease lintRelease`: sukces, Lint 0 błędów / 35 ostrzeżeń. Początkowo Lint zgłosił użycie starego przeciążenia `startActivityAndCollapse`; jest teraz ograniczone do API <34, z opisanym wyłączeniem tej konkretnej reguły. Na API 34+ działa PendingIntent. Nie wyłączono kontroli Lint globalnie.
+
+APK `OKStudy-Mobile-0.3.0.apk`: versionCode 5, min SDK 26, target SDK 36, pakiet `pl.okstudy.mobile`, 160787 bajtów, SHA-256 `59d7573e0b6c4051391165cf477bfb384be083f85fff19d63c137585815a86d8`. Podpis v2/v3, ten sam certyfikat SHA-256 `b38137d48a977354d4807c7c9ab6578ab6afeeb9aa095ad67ce767e438ccbf0d`.
+
+Użytkownik wcześniej potwierdził „działa” po 0.2.2. Nie traktujemy tego jako sprawdzenia nowych funkcji 0.3.0 ani wszystkich brakujących modeli. Menu, kafelek, historia, ulubione, ostrzeżenie kadru i porównanie wymagają prób opisanych w [PHONE-TESTS.md](PHONE-TESTS.md).
+
 ## Android 0.2.2 — zgłoszenie braku tekstu i nowszych modeli
 
 Użytkownik sprawdził 5.6 Sol i 5.6 Terra w 0.2.1; aplikacja zgłasza „Model nie zwrócił odpowiedzi”. Lista nadal pomija 6.1 Sol, 6 Sol i 6 Luna. Przegląd kodu wykazał, że odbiornik mobilny czytał tylko `response.completed.response.output`, ignorując tekst przesyłany w pozostałych zdarzeniach. Jest to luka implementacji; bez odpowiedzi z telefonu nie potwierdzono, że właśnie ona odpowiada za konkretny zgłoszony przebieg. Implementacja 0.2.2 zbiera fragmenty i końcowe wersje tekstu zgodnie z [opisem strumienia Responses](https://developers.openai.com/api/docs/guides/streaming-responses), nadal wymagając ukończenia i odrzucając późny błąd.

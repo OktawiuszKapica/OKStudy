@@ -1,6 +1,7 @@
 import { shortAnswer } from './config.js';
 import { createSystemSpeech } from './speech.js';
 import { expressTheme, positionWithin } from './appearance.js';
+import { inspectRegion } from './image-quality.js';
 
 if (!globalThis.__okstudyV2) {
   globalThis.__okstudyV2 = true;
@@ -287,8 +288,12 @@ if (!globalThis.__okstudyV2) {
       ensureRoot().append(layer);
       let rect,
         start,
+        acknowledged = '',
         done = false;
       const render = () => {
+        acknowledged = '';
+        confirm.textContent = 'Analizuj fragment';
+        help.replaceChildren(document.createTextNode('Przeciągnij ramkę wokół zadania'), small);
         box.classList.remove('hidden');
         Object.assign(box.style, {
           left: `${rect.x}px`,
@@ -361,7 +366,28 @@ if (!globalThis.__okstudyV2) {
       keyboard.onclick = selectDefault;
       cancel.onclick = () => finish({ cancelled: true });
       confirm.onclick = () => {
-        if (rect && !confirm.disabled) finish({ ...rect, viewportWidth: width, viewportHeight: height });
+        if (!rect || confirm.disabled) return;
+        const selection = { ...rect, viewportWidth: width, viewportHeight: height };
+        const signature = JSON.stringify(selection);
+        if (currentSettings.cropQualityCheck !== false && acknowledged !== signature) {
+          if (!img.complete || !img.naturalWidth) {
+            help.textContent = 'Podgląd jeszcze się ładuje. Spróbuj za chwilę.';
+            return;
+          }
+          let warning = '';
+          try {
+            warning = inspectRegion(img, selection);
+          } catch {
+            warning = 'Nie udało się sprawdzić kadru. Oceń jego czytelność w podglądzie.';
+          }
+          if (warning) {
+            help.replaceChildren(document.createTextNode(warning), small);
+            confirm.textContent = 'Wyślij mimo ostrzeżenia';
+            acknowledged = signature;
+            return;
+          }
+        }
+        finish(selection);
       };
       layer.onpointerdown = (e) => {
         if (toolbar.contains(e.target) || help.contains(e.target) || e.button !== 0) return;
