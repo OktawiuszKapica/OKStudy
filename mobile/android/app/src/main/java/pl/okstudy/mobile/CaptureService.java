@@ -557,6 +557,7 @@ public final class CaptureService extends Service {
                   if (ending || active != token || token.cancelled || current != generation) return;
                   active = null;
                   resetButton();
+                  removeAnswer();
                   AppState.answer = text;
                   AppState.error = "";
                   AppState.remember(selected, connection);
@@ -603,18 +604,20 @@ public final class CaptureService extends Service {
   private void working() {
     resetButton();
     if (prefs.indicator().equals("off")) return;
-    if (!prefs.launcher().equals("button")) {showAnswer(prefs.indicator().equals("full") ? "Analizuję zadanie…" : "•••",true);return;}
-    button.setText("•••");
+    boolean visibleButton = prefs.launcher().equals("button");
+    if (visibleButton) button.setText("•••");
+    else showAnswer(prefs.indicator().equals("full") ? "Analizuję zadanie…" : "•••",true);
+    View progress = visibleButton ? button : answer;
     pulse = ValueAnimator.ofFloat(.35f, 1f);
     pulse.setDuration(650);
     pulse.setRepeatCount(ValueAnimator.INFINITE);
     pulse.setRepeatMode(ValueAnimator.REVERSE);
     pulse.addUpdateListener(
         v -> {
-          if (button != null) button.setAlpha((float) v.getAnimatedValue());
+          if (progress != null) progress.setAlpha((float) v.getAnimatedValue());
         });
     pulse.start();
-    if (prefs.indicator().equals("full")) showAnswer("Analizuję zadanie…", true);
+    if (visibleButton && prefs.indicator().equals("full")) showAnswer("Analizuję zadanie…", true);
   }
 
   private void resetButton() {

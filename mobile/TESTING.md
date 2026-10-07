@@ -4,7 +4,9 @@
 
 Wykonano wyłącznie `assembleRelease lintRelease`: sukces, **Lint 0 błędów / 37 ostrzeżeń**. Nie uruchomiono aplikacji, emulatora, telefonu ani testów jednostkowych/instrumentacyjnych. Zadania modelu Lint dla źródeł testowych są analizą statyczną i nie wykonują testów. Sprawdzono także skompilowane odwołania do `Arrays.asList` i `String.trim`, bez użycia nowszych metod biblioteki niedostępnych na części obsługiwanych Androidów.
 
-APK `OKStudy-Mobile-0.3.1.apk`: versionCode 6, min SDK 26, target SDK 36, pakiet `pl.okstudy.mobile`, **168979 bajtów**, SHA-256 `af842eade36a65b2cef8c028ee3792d625d2f8727a6125c3fedec1e73c6d9278`. Podpis v2/v3 z niezmienionym certyfikatem SHA-256 `b38137d48a977354d4807c7c9ab6578ab6afeeb9aa095ad67ce767e438ccbf0d`.
+APK `OKStudy-Mobile-0.3.1.apk`: versionCode 6, min SDK 26, target SDK 36, pakiet `pl.okstudy.mobile`, **168979 bajtów**, SHA-256 `22366752784e43b13bca7c2f2a27e1a8c19ec8510e859d3915e4fdd1e471eb38`. Podpis v2/v3 z niezmienionym certyfikatem SHA-256 `b38137d48a977354d4807c7c9ab6578ab6afeeb9aa095ad67ce767e438ccbf0d`.
+
+Końcowa paczka obejmuje pulsujący wskaźnik przy ukrytym OK oraz usunięcie komunikatu postępu po otrzymaniu odpowiedzi wyłącznie głosowej. Kompilacja i Lint zostały wykonane po tej poprawce.
 
 Nowe strefy gestów, brak OK w przebiegu sukces/błąd/anulowanie, wibracja, obrót, zamknięcie powiadomień przed zrzutem i trafność wyboru pytania **nie zostały sprawdzone na urządzeniu**. Użytkownik wykonuje [próby telefonu](PHONE-TESTS.md). Nie wykonano logowania ani zapytań AI. iOS bez zmian.
 
