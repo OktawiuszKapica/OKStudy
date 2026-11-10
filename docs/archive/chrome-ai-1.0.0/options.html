@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ustawienia - AI Study Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8fafc;
+      min-height: 100vh;
+      color: #1e293b;
+    }
+    .container { max-width: 600px; margin: 0 auto; padding: 32px 16px; }
+    .header { text-align: center; margin-bottom: 32px; }
+    .logo {
+      width: 64px; height: 64px;
+      background: linear-gradient(145deg, #4F46E5 0%, #3730A3 100%);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 600; font-size: 22px;
+      letter-spacing: 1px;
+      margin: 0 auto 16px;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+    .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .header p { color: #64748b; font-size: 14px; }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group:last-child { margin-bottom: 0; }
+    label { display: block; font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 6px; }
+    input[type="password"], input[type="text"] {
+      width: 100%; padding: 12px;
+      border: 1px solid #e2e8f0; border-radius: 8px;
+      font-size: 14px; transition: border-color 0.2s;
+    }
+    input:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1); }
+    .input-hint { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+    .input-hint a { color: #7c3aed; text-decoration: none; }
+    .input-hint a:hover { text-decoration: underline; }
+    .theme-selector { display: flex; gap: 8px; }
+    .theme-option {
+      flex: 1; padding: 12px;
+      border: 2px solid #e2e8f0; border-radius: 8px;
+      background: white; cursor: pointer; text-align: center;
+      transition: all 0.2s;
+    }
+    .theme-option:hover { border-color: #cbd5e1; }
+    .theme-option.active { border-color: #4F46E5; background: #EEF2FF; }
+    .theme-option-icon { font-size: 24px; margin-bottom: 4px; }
+    .theme-option-label { font-size: 12px; font-weight: 500; color: #475569; }
+    .style-selector { display: flex; flex-direction: column; gap: 8px; }
+    .style-option {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;
+      background: white; cursor: pointer; text-align: left; transition: all 0.2s;
+    }
+    .style-option:hover { border-color: #cbd5e1; }
+    .style-option.active { border-color: #4F46E5; background: #EEF2FF; }
+    .style-icon { font-size: 24px; }
+    .style-info { flex: 1; }
+    .style-name { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .style-desc { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .input-hint a { color: #4F46E5; text-decoration: none; }
+    .button {
+      width: 100%; padding: 14px;
+      border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s;
+      background: linear-gradient(145deg, #4F46E5 0%, #3730A3 100%);
+      color: white;
+    }
+    .button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
+    .status {
+      text-align: center; padding: 12px; border-radius: 8px;
+      font-size: 13px; margin-top: 16px; display: none;
+    }
+    .status.success { display: block; background: #dcfce7; color: #166534; }
+    .status.error { display: block; background: #fee2e2; color: #991b1b; }
+    .info-box {
+      background: #f5f3ff; border: 1px solid #ddd6fe;
+      border-radius: 8px; padding: 16px; margin-top: 24px;
+    }
+    .info-box h3 { font-size: 14px; font-weight: 600; color: #6d28d9; margin-bottom: 8px; }
+    .info-box p { font-size: 12px; color: #7c3aed; line-height: 1.6; }
+    .models-info {
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 8px; padding: 16px; margin-top: 16px;
+    }
+    .models-info h4 { font-size: 13px; font-weight: 600; color: #166534; margin-bottom: 8px; }
+    .models-info ul { font-size: 11px; color: #15803d; padding-left: 16px; line-height: 1.8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">AI</div>
+      <h1>AI Study Assistant</h1>
+      <p>Skonfiguruj swoje klucze API i preferencje</p>
+    </div>
+    
+    <div class="card">
+      <h2 class="card-title">🔑 Klucze API</h2>
+      <div class="form-group">
+        <label for="claudeKey">Klucz API Claude (Anthropic)</label>
+        <input type="password" id="claudeKey" placeholder="sk-ant-...">
+        <p class="input-hint">Pobierz: <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a></p>
+      </div>
+      <div class="form-group">
+        <label for="geminiKey">Klucz API Gemini (Google)</label>
+        <input type="password" id="geminiKey" placeholder="AIza...">
+        <p class="input-hint">Pobierz: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a></p>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 class="card-title">📝 Styl odpowiedzi</h2>
+      <div class="style-selector">
+        <button class="style-option active" data-style="short">
+          <div class="style-icon">⚡</div>
+          <div class="style-info">
+            <div class="style-name">Krótki</div>
+            <div class="style-desc">Tylko odpowiedź (a, b, c, d)</div>
+          </div>
+        </button>
+        <button class="style-option" data-style="medium">
+          <div class="style-icon">💬</div>
+          <div class="style-info">
+            <div class="style-name">Średni</div>
+            <div class="style-desc">Odpowiedź + krótkie wyjaśnienie</div>
+          </div>
+        </button>
+        <button class="style-option" data-style="detailed">
+          <div class="style-icon">📚</div>
+          <div class="style-info">
+            <div class="style-name">Szczegółowy</div>
+            <div class="style-desc">Pełne wyjaśnienie krok po kroku</div>
+          </div>
+        </button>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 class="card-title">🎨 Motyw</h2>
+      <div class="theme-selector">
+        <button class="theme-option" data-theme="light">
+          <div class="theme-option-icon">☀️</div>
+          <div class="theme-option-label">Jasny</div>
+        </button>
+        <button class="theme-option" data-theme="dark">
+          <div class="theme-option-icon">🌙</div>
+          <div class="theme-option-label">Ciemny</div>
+        </button>
+        <button class="theme-option active" data-theme="system">
+          <div class="theme-option-icon">💻</div>
+          <div class="theme-option-label">System</div>
+        </button>
+      </div>
+    </div>
+    
+    <button class="button" id="saveBtn">💾 Zapisz ustawienia</button>
+    <div class="status" id="status"></div>
+    
+    <div class="models-info">
+      <h4>🤖 Obsługiwane modele AI</h4>
+      <ul>
+        <li><strong>Gemini 3 Pro</strong> - najinteligentniejszy Gemini</li>
+        <li><strong>Gemini 3 Flash</strong> - szybki z inteligencją Pro (domyślny)</li>
+        <li><strong>Claude Opus 4.5</strong> - najinteligentniejszy Claude</li>
+        <li><strong>Claude Sonnet 4.5</strong> - zbalansowany model</li>
+        <li><strong>Claude Haiku 4.5</strong> - najszybszy i najtańszy</li>
+      </ul>
+    </div>
+    
+    <div class="info-box" style="background: #EEF2FF; border: 1px solid #C7D2FE;">
+      <h3 style="color: #3730A3;">🔒 Twoje dane są bezpieczne</h3>
+      <p style="color: #4F46E5;">Klucze API są przechowywane lokalnie w przeglądarce. Nigdy nie są wysyłane na nasze serwery. Komunikujesz się bezpośrednio z API Claude i Gemini.</p>
+    </div>
+    
+    <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #94a3b8;">
+      v1.0.6 • Created by <strong style="color: #4F46E5;">Oktawiusz Kapica</strong>
+    </div>
+  </div>
+  
+  <script>
+    // Load saved settings
+    chrome.storage.sync.get('settings', (result) => {
+      if (result.settings) {
+        document.getElementById('claudeKey').value = result.settings.claudeApiKey || '';
+        document.getElementById('geminiKey').value = result.settings.geminiApiKey || '';
+        document.querySelectorAll('.theme-option').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.theme === result.settings.theme);
+        });
+        document.querySelectorAll('.style-option').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.style === (result.settings.responseStyle || 'short'));
+        });
+      }
+    });
+    
+    // Theme selector
+    let selectedTheme = 'system';
+    document.querySelectorAll('.theme-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.theme-option').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedTheme = btn.dataset.theme;
+      });
+    });
+
+    // Style selector
+    let selectedStyle = 'short';
+    document.querySelectorAll('.style-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.style-option').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedStyle = btn.dataset.style;
+      });
+    });
+    
+    // Save settings
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      const claudeKey = document.getElementById('claudeKey').value.trim();
+      const geminiKey = document.getElementById('geminiKey').value.trim();
+      
+      const result = await chrome.storage.sync.get('settings');
+      const settings = result.settings || {};
+      
+      settings.claudeApiKey = claudeKey;
+      settings.geminiApiKey = geminiKey;
+      settings.theme = selectedTheme;
+      settings.responseStyle = selectedStyle;
+      
+      await chrome.storage.sync.set({ settings });
+      
+      const status = document.getElementById('status');
+      status.textContent = '✅ Ustawienia zostały zapisane!';
+      status.className = 'status success';
+      setTimeout(() => { status.className = 'status'; }, 3000);
+    });
+  </script>
+</body>
+</html>

@@ -1,4 +1,11 @@
 node_modules/
+_lokalne/
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.key
+*.pem
 artifacts/
 .codex-remote-attachments/
 releases/

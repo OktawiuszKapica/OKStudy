@@ -2,6 +2,12 @@
 
 # OKStudy 2
 
+Główny katalog projektu: **C:\Users\Public\Projekty\OKStudy**, gałąź `main`.
+Aktualne źródła: rozszerzenie 2.2.0, Windows 0.2.1 i Android 0.3.1;
+Apple pozostaje w źródłach 0.1.0. Starszy prototyp Chrome AI / AI Study
+Assistant 1.0.0 zachowano w [archiwum](docs/archive/chrome-ai-1.0.0/ARCHIWUM.md).
+[Porządki, dane i kopia do migracji](docs/PORZADKI_2026-11-10.md).
+
 **Zaznacz zadanie. Zrozum rozwiązanie.**
 
 Rozszerzenie Chrome do nauki z Gemini, Claude, OpenAI lub Grok. Własna identyfikacja, grafiki, motywy grafitowy i jasny oraz panel do rozmowy obok strony. Autorem projektu jest **Oktawiusz Kapica** — OK to jego inicjały.
