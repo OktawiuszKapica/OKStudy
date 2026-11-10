@@ -8,8 +8,8 @@ Zachowano wszystkie 11 plików kodu i dokumentacji. Dodatkowy luźny plik
 z kluczem API zabezpieczono w prywatnej części kopii, poza Git. Usunięto jeden
 pusty katalog utworzony pod dosłowną nazwą `{icons,css,js}`.
 Pozostałe źródła i historyczny README są zachowane bez zmiany treści.
-Puste katalogi ikon i bibliotek zastano już w starym folderze; nie uzupełniano
-brakujących zasobów ani nie potwierdzano działania tego prototypu.
+Zachowano także trzy oryginalne ikony. Nie zmieniano zasobów ani nie
+potwierdzano działania tej historycznej wersji.
 
 Informacje o modelach i instrukcje w starym README są historyczne.
 Archiwizacja nie jest nowym wydaniem, zmianą licencji ani modernizacją kodu.
